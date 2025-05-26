@@ -9,10 +9,10 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('Firebase initialized successfully');
-  } catch (e, stackTrace) {
-    print('Error initializing Firebase: $e');
-    print('Stack trace: $stackTrace');
+    // print('Firebase initialized successfully');
+  } catch (e) {
+    // print('Error initializing Firebase: $e');
+    // print('Stack trace: $stackTrace');
   }
   runApp(const MyApp());
 }

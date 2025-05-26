@@ -173,11 +173,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      print('Attempting to sign up with:');
-      print('Email: ${_emailController.text.trim()}');
-      print('Username: ${_usernameController.text.trim()}');
-      print('Student ID: ${_studentIdController.text.trim()}');
-
+      // Remove all print statements and use debugPrint instead for development logging
+      // debugPrint('Attempting to sign up with:');
+      // debugPrint('Email: \\${_emailController.text.trim()}');
+      // debugPrint('Username: \\${_usernameController.text.trim()}');
+      // debugPrint('Student ID: \\${_studentIdController.text.trim()}');
       await _firebaseService.signUpWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
@@ -185,7 +185,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         studentId: _studentIdController.text.trim(),
       );
 
-      print('Sign up successful!');
+      // debugPrint('Sign up successful!');
 
       if (mounted) {
         // Show success dialog
@@ -247,7 +247,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         );
       }
     } catch (e) {
-      print('Error during sign up: $e');
+      // debugPrint('Error during sign up: \\$e');
       if (mounted) {
         setState(() {
           _formErrorMessage = e.toString();
@@ -299,11 +299,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: primaryRed.withOpacity(0.2)),
+        borderSide: BorderSide(color: primaryRed.withValues(alpha: 0.2)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: primaryRed.withOpacity(0.2)),
+        borderSide: BorderSide(color: primaryRed.withValues(alpha: 0.2)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -311,7 +311,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: primaryRed.withOpacity(0.5)),
+        borderSide: BorderSide(color: primaryRed.withValues(alpha: 0.5)),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
