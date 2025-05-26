@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'signup_screen.dart'; // Import the SignUpScreen
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'main.dart';
+
 
 // AnimatedLogo widget for animated logo symbols
 class AnimatedLogo extends StatefulWidget {
@@ -122,7 +124,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _studentIdController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _showPassword = false;
   String? _formErrorMessage;
@@ -134,17 +136,31 @@ class _LoginScreenState extends State<LoginScreen> {
   final Color textColor = const Color.fromRGBO(51, 51, 51, 1);
   final Color hintColor = const Color.fromRGBO(153, 153, 153, 1);
 
+
+void _clearErrorMessage() {
+  if (_formErrorMessage != null) {
+    setState(() {
+      _formErrorMessage = null;
+    });
+  }
+}
+
   @override
   void dispose() {
-    _studentIdController.dispose();
+  _emailController.removeListener(_clearErrorMessage);
+  _passwordController.removeListener(_clearErrorMessage);
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   void _resetForm() {
     _formKey.currentState?.reset();
-    _studentIdController.clear();
+    _emailController.clear();
     _passwordController.clear();
+    setState(() {
+    _formErrorMessage = null;
+  });
   }
 
   InputDecoration _getInputDecoration({
@@ -316,40 +332,25 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ],
-                              TextFormField(
-                                controller: _studentIdController,
+                             TextFormField(
+                                controller: _emailController,
                                 decoration: _getInputDecoration(
-                                  label: 'Student ID',
+                                  label: 'Email',
                                   icon: Icons.badge_outlined,
-                                  hintText: 'Enter your student ID',
+                                  hintText: 'Enter your email',
                                 ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  TextInputFormatter.withFunction((oldValue, newValue) {
-                                    String digits = newValue.text.replaceAll('-', '');
-                                    if (digits.length > 9) digits = digits.substring(0, 9);
-                                    String formatted = digits;
-                                    if (digits.length > 4) {
-                                      formatted = '${digits.substring(0, 4)}-${digits.substring(4)}';
-                                    }
-                                    return TextEditingValue(
-                                      text: formatted,
-                                      selection: TextSelection.collapsed(offset: formatted.length),
-                                    );
-                                  }),
-                                ],
+                                keyboardType: TextInputType.emailAddress,
                                 style: GoogleFonts.poppins(
                                   color: textColor,
                                   fontSize: 14,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your Student ID';
+                                    return 'Please enter your email';
                                   }
-                                  final regex = RegExp(r'^\d{4}-\d{5}$');
-                                  if (!regex.hasMatch(value)) {
-                                    return 'Format must be 1234-56789';
+                                  final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+                                  if (!emailRegex.hasMatch(value)) {
+                                    return 'Please enter a valid email address';
                                   }
                                   return null;
                                 },
@@ -388,24 +389,237 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                               const SizedBox(height: 24),
                               ElevatedButton(
-                                onPressed: () {
+                                onPressed: () async {
+                                  print("Sign in button pressed");
+
                                   if (_formKey.currentState!.validate()) {
-                                    setState(() {
-                                      _formErrorMessage = null;
-                                    });
-                                    // TODO: Implement authentication logic
-                                  } else {
-                                    setState(() {
-                                      _formErrorMessage = 'All of the fields are required to fill in.';
-                                    });
-                                    _resetForm();
-                                    Future.delayed(const Duration(seconds: 3), () {
-                                      if (mounted && _formErrorMessage != null) {
-                                        setState(() {
-                                          _formErrorMessage = null;
-                                        });
+                                    final email = _emailController.text.trim();
+                                    final password = _passwordController.text;
+                                    try {
+                                      final response = await Supabase.instance.client.auth
+                                          .signInWithPassword(email: email, password: password);
+
+                                      if (response.user != null) {
+                                        print('✅ Signed in as: ${response.user!.email}');
+                                        await showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (BuildContext dialogContext) => AlertDialog(
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                            backgroundColor: white,
+                                            content: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.check_circle_rounded, color: primaryRed, size: 48),
+                                                const SizedBox(height: 16),
+                                                Text(
+                                                  'Login Successful!',
+                                                  style: GoogleFonts.poppins(
+                                                    color: primaryRed,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 18,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  'Welcome ${response.user!.email}',
+                                                  style: GoogleFonts.poppins(
+                                                    color: textColor,
+                                                    fontSize: 15,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                const SizedBox(height: 24),
+                                                SizedBox(
+                                                  width: double.infinity,
+                                                  child: ElevatedButton(
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: primaryRed,
+                                                      foregroundColor: white,
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                      elevation: 0,
+                                                    ),
+                                                    onPressed: () {
+                                                      Navigator.of(dialogContext).pop(); // Close dialog
+                                                      Navigator.pushReplacement(
+                                                                context,
+                                                                MaterialPageRoute(
+                                                                  builder: (context) => const MyHomePage(title: 'Welcome'),
+                                                                ),
+                                                              );
+                                                    },
+                                                    child: Text(
+                                                      'OK',
+                                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        await showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (BuildContext dialogContext) => AlertDialog(
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                            backgroundColor: white,
+                                            content: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.error_rounded, color: Colors.red, size: 48),
+                                                const SizedBox(height: 16),
+                                                Text(
+                                                  'Login Failed',
+                                                  style: GoogleFonts.poppins(
+                                                    color: Colors.red,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 18,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  'Invalid email or password.',
+                                                  style: GoogleFonts.poppins(
+                                                    color: textColor,
+                                                    fontSize: 15,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                const SizedBox(height: 24),
+                                                SizedBox(
+                                                  width: double.infinity,
+                                                  child: ElevatedButton(
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: primaryRed,
+                                                      foregroundColor: white,
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                      elevation: 0,
+                                                    ),
+                                                    onPressed: () {
+                                                      Navigator.of(dialogContext).pop();
+                                                    },
+                                                    child: Text(
+                                                      'OK',
+                                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
                                       }
-                                    });
+                                    } catch (error) {
+                                      await showDialog(
+                                        context: context,
+                                        barrierDismissible: false,
+                                        builder: (BuildContext dialogContext) => AlertDialog(
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                          backgroundColor: white,
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.error_rounded, color: Colors.red, size: 48),
+                                              const SizedBox(height: 16),
+                                              Text(
+                                                'Login Failed',
+                                                style: GoogleFonts.poppins(
+                                                  color: Colors.red,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 18,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                'Login failed: ${error.toString()}',
+                                                style: GoogleFonts.poppins(
+                                                  color: textColor,
+                                                  fontSize: 15,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 24),
+                                              SizedBox(
+                                                width: double.infinity,
+                                                child: ElevatedButton(
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: primaryRed,
+                                                    foregroundColor: white,
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                    elevation: 0,
+                                                  ),
+                                                  onPressed: () {
+                                                    Navigator.of(dialogContext).pop();
+                                                  },
+                                                  child: Text(
+                                                    'OK',
+                                                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    await showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (BuildContext dialogContext) => AlertDialog(
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                        backgroundColor: white,
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.error_rounded, color: Colors.red, size: 48),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              'Form Incomplete',
+                                              style: GoogleFonts.poppins(
+                                                color: Colors.red,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'All of the fields are required to fill in.',
+                                              style: GoogleFonts.poppins(
+                                                color: textColor,
+                                                fontSize: 15,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            const SizedBox(height: 24),
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: ElevatedButton(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: primaryRed,
+                                                  foregroundColor: white,
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                  elevation: 0,
+                                                ),
+                                                onPressed: () {
+                                                  Navigator.of(dialogContext).pop();
+                                                },
+                                                child: Text(
+                                                  'OK',
+                                                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(
@@ -425,19 +639,29 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ),
+
                               const SizedBox(height: 16),
                               TextButton(
                                 onPressed: () {
+                                  setState(() {
+                                    _formErrorMessage = null; // Clear error
+                                  });
                                   Navigator.of(context).push(
                                     PageRouteBuilder(
-                                      pageBuilder: (context, animation, secondaryAnimation) => const SignUpScreen(),
+                                      pageBuilder: (context, animation, secondaryAnimation) =>
+                                          const SignUpScreen(),
                                       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                        return ScaleTransition(
-                                          scale: CurvedAnimation(
-                                            parent: animation,
-                                            curve: Curves.easeInOut,
+                                        final curvedAnimation = CurvedAnimation(
+                                          parent: animation,
+                                          curve: Curves.easeInOut,
+                                        );
+
+                                        return FadeTransition(
+                                          opacity: animation,
+                                          child: ScaleTransition(
+                                            scale: curvedAnimation,
+                                            child: child,
                                           ),
-                                          child: child,
                                         );
                                       },
                                       transitionDuration: const Duration(milliseconds: 500),

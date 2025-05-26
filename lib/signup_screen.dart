@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'services/firebase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart'; // Import LoginScreen
 
 class SignUpScreen extends StatefulWidget {
@@ -18,7 +18,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _studentIdController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _firebaseService = FirebaseService();
+  final SupabaseClient _supabase = Supabase.instance.client;
+
   bool _showPassword = false;
   bool _showConfirmPassword = false;
   String? _formErrorMessage;
@@ -180,21 +181,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() {
       _isLoading = true;
     });
-
+      
     try {
-      // Remove all print statements and use debugPrint instead for development logging
-      // debugPrint('Attempting to sign up with:');
-      // debugPrint('Email: \\${_emailController.text.trim()}');
-      // debugPrint('Username: \\${_usernameController.text.trim()}');
-      // debugPrint('Student ID: \\${_studentIdController.text.trim()}');
-      await _firebaseService.signUpWithEmailAndPassword(
+      final response = await _supabase.auth.signUp(
         email: _emailController.text.trim(),
-        password: _passwordController.text,
-        username: _usernameController.text.trim(),
-        studentId: _studentIdController.text.trim(),
+        password: _passwordController.text.trim(),
       );
 
-      // debugPrint('Sign up successful!');
+      final user = response.user;
+
+      if (user != null) {
+        final insertResponse = await _supabase.from('users').insert({
+          'id': user.id,
+          'name': _usernameController.text.trim(),
+          'student_id': _studentIdController.text.trim(),
+        });
+
+        if (insertResponse.error != null) {
+          throw Exception('Insert failed: ${insertResponse.error!.message}');
+        }
+      }
+    } catch (e) {
+      print('Error: $e');
 
       if (mounted) {
         // Show success dialog
@@ -209,24 +217,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
               children: [
                 Icon(Icons.check_circle_rounded, color: primaryRed, size: 48),
                 const SizedBox(height: 16),
-                Text(
-                  'Successfully Registered!',
-                  style: GoogleFonts.poppins(
-                    color: primaryRed,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                  textAlign: TextAlign.center,
+               Text(
+                'Registration Successful!',
+                style: GoogleFonts.poppins(
+                  color: primaryRed,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'You can now login.',
-                  style: GoogleFonts.poppins(
-                    color: textColor,
-                    fontSize: 15,
-                  ),
-                  textAlign: TextAlign.center,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Please check your email to verify your account before logging in.',
+                style: GoogleFonts.poppins(
+                  color: textColor,
+                  fontSize: 15,
                 ),
+                textAlign: TextAlign.center,
+              ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -252,27 +260,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ],
             ),
-          ),
-        );
-      }
-    } catch (e) {
-      // debugPrint('Error during sign up: \\$e');
-      if (mounted) {
-        setState(() {
-          _formErrorMessage = e.toString();
-        });
-        // Show error dialog
-        showDialog(
-          context: context,
-          builder: (BuildContext dialogContext) => AlertDialog(
-            title: Text('Error', style: GoogleFonts.poppins(color: primaryRed)),
-            content: Text(e.toString(), style: GoogleFonts.poppins()),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text('OK', style: GoogleFonts.poppins(color: primaryRed)),
-              ),
-            ],
           ),
         );
       }
