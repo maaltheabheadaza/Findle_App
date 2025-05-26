@@ -294,7 +294,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   margin: const EdgeInsets.only(bottom: 16),
                                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                   decoration: BoxDecoration(
-                                    color: primaryRed.withValues(alpha: 0.1 * 255),
+                                    color: white,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(color: primaryRed.withValues(alpha: 0.5 * 255)),
                                   ),
@@ -396,7 +396,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     // TODO: Implement authentication logic
                                   } else {
                                     setState(() {
-                                      _formErrorMessage = 'Please fill in all required fields correctly.';
+                                      _formErrorMessage = 'All of the fields are required to fill in.';
                                     });
                                     _resetForm();
                                     Future.delayed(const Duration(seconds: 3), () {

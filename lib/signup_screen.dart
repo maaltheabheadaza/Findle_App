@@ -424,7 +424,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   margin: const EdgeInsets.only(bottom: 16),
                                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                   decoration: BoxDecoration(
-                                    color: primaryRed.withValues(alpha: 0.1 * 255),
+                                    color: white,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(color: primaryRed.withValues(alpha: 0.5 * 255)),
                                   ),
