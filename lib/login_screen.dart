@@ -1,0 +1,480 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'signup_screen.dart'; // Import the SignUpScreen
+
+// AnimatedLogo widget for animated logo symbols
+class AnimatedLogo extends StatefulWidget {
+  final Color primaryRed;
+  final Color primaryYellow;
+  final Color lightRed;
+  const AnimatedLogo({
+    super.key,
+    required this.primaryRed,
+    required this.primaryYellow,
+    required this.lightRed,
+  });
+
+  @override
+  State<AnimatedLogo> createState() => _AnimatedLogoState();
+}
+
+class _AnimatedLogoState extends State<AnimatedLogo> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _bookRotation;
+  late Animation<double> _searchRotation;
+  late Animation<double> _backpackOffset;
+  late Animation<double> _bookOffset;
+  late Animation<double> _searchOffset;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _bookRotation = Tween<double>(begin: -0.2, end: -0.4).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _searchRotation = Tween<double>(begin: 0.2, end: 0.4).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _backpackOffset = Tween<double>(begin: 0, end: -10).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _bookOffset = Tween<double>(begin: 0, end: 8).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    _searchOffset = Tween<double>(begin: 0, end: -8).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            color: widget.lightRed,
+            shape: BoxShape.circle,
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned(
+                bottom: 20 + _backpackOffset.value,
+                child: Icon(
+                  Icons.backpack_rounded,
+                  size: 40,
+                  color: widget.primaryRed,
+                ),
+              ),
+              Positioned(
+                right: 25,
+                top: 25 + _bookOffset.value,
+                child: Transform.rotate(
+                  angle: _bookRotation.value,
+                  child: Icon(
+                    Icons.book_rounded,
+                    size: 30,
+                    color: widget.primaryYellow,
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 25,
+                top: 25 + _searchOffset.value,
+                child: Transform.rotate(
+                  angle: _searchRotation.value,
+                  child: Icon(
+                    Icons.search_rounded,
+                    size: 30,
+                    color: widget.primaryRed,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _studentIdController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _showPassword = false;
+  String? _formErrorMessage;
+
+  final Color primaryRed = const Color.fromRGBO(112, 1, 0, 1);
+  final Color primaryYellow = const Color.fromRGBO(246, 196, 1, 1);
+  final Color white = const Color(0xFFF3F3F3);
+  final Color lightRed = const Color.fromRGBO(112, 1, 0, 0.1);
+  final Color textColor = const Color.fromRGBO(51, 51, 51, 1);
+  final Color hintColor = const Color.fromRGBO(153, 153, 153, 1);
+
+  @override
+  void dispose() {
+    _studentIdController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _resetForm() {
+    _formKey.currentState?.reset();
+    _studentIdController.clear();
+    _passwordController.clear();
+  }
+
+  InputDecoration _getInputDecoration({
+    required String label,
+    required IconData icon,
+    String? hintText,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hintText,
+      labelStyle: GoogleFonts.poppins(
+        color: hintColor,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+      hintStyle: GoogleFonts.poppins(
+        color: hintColor.withOpacity(0.7),
+        fontSize: 14,
+      ),
+      prefixIcon: Icon(icon, color: primaryRed, size: 20),
+      filled: true,
+      fillColor: white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: primaryRed.withOpacity(0.2)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: primaryRed.withOpacity(0.2)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: primaryRed, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: primaryRed.withOpacity(0.5)),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: primaryRed, width: 2),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: white,
+      body: Container(
+        color: const Color(0xFFF0F1F5),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              // Patterned background with many student-related icons
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.13,
+                  child: Stack(
+                    children: [
+                      // Row 1
+                      Positioned(top: 40, left: 20, child: Icon(Icons.book_rounded, size: 50, color: primaryRed)),
+                      Positioned(top: 80, right: 30, child: Icon(Icons.backpack_rounded, size: 40, color: primaryYellow)),
+                      Positioned(top: 60, left: 120, child: Icon(Icons.laptop_mac_rounded, size: 35, color: primaryYellow)),
+                      Positioned(top: 120, right: 100, child: Icon(Icons.edit_note_rounded, size: 30, color: primaryRed)),
+                      Positioned(top: 30, right: 80, child: Icon(Icons.science_rounded, size: 38, color: primaryRed)),
+                      // Row 2
+                      Positioned(top: 180, left: 60, child: Icon(Icons.search_rounded, size: 40, color: primaryRed)),
+                      Positioned(top: 200, right: 40, child: Icon(Icons.school_rounded, size: 45, color: primaryYellow)),
+                      Positioned(top: 220, left: 180, child: Icon(Icons.calculate_rounded, size: 32, color: primaryYellow)),
+                      Positioned(top: 160, right: 120, child: Icon(Icons.palette_rounded, size: 36, color: primaryRed)),
+                      // Row 3
+                      Positioned(bottom: 220, left: 40, child: Icon(Icons.menu_book_rounded, size: 40, color: primaryRed)),
+                      Positioned(bottom: 200, right: 60, child: Icon(Icons.sports_esports_rounded, size: 38, color: primaryYellow)),
+                      Positioned(bottom: 180, left: 120, child: Icon(Icons.headphones_rounded, size: 32, color: primaryYellow)),
+                      Positioned(bottom: 160, right: 100, child: Icon(Icons.coffee_rounded, size: 36, color: primaryRed)),
+                      // Row 4
+                      Positioned(bottom: 120, left: 60, child: Icon(Icons.search_rounded, size: 40, color: primaryRed)),
+                      Positioned(bottom: 60, right: 80, child: Icon(Icons.laptop_mac_rounded, size: 55, color: primaryYellow)),
+                      Positioned(bottom: 40, left: 180, child: Icon(Icons.edit_note_rounded, size: 45, color: primaryRed)),
+                      Positioned(bottom: 30, right: 30, child: Icon(Icons.science_rounded, size: 38, color: primaryRed)),
+                      // Extra scattered
+                      Positioned(top: 300, left: 30, child: Icon(Icons.book_rounded, size: 30, color: primaryRed)),
+                      Positioned(top: 350, right: 60, child: Icon(Icons.backpack_rounded, size: 30, color: primaryYellow)),
+                      Positioned(bottom: 300, left: 100, child: Icon(Icons.palette_rounded, size: 28, color: primaryRed)),
+                      Positioned(bottom: 350, right: 120, child: Icon(Icons.calculate_rounded, size: 28, color: primaryYellow)),
+                      // ...add more for density if needed
+                    ],
+                  ),
+                ),
+              ),
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Cute Logo and Title
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 32),
+                        child: Column(
+                          children: [
+                            // Animated logo
+                            AnimatedLogo(
+                              primaryRed: primaryRed,
+                              primaryYellow: primaryYellow,
+                              lightRed: lightRed,
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              'Findle',
+                              style: GoogleFonts.poppins(
+                                fontSize: 36,
+                                fontWeight: FontWeight.w700,
+                                color: primaryRed,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Lost it? Don\'t worry, just Findle it!',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: primaryRed.withOpacity(0.1),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(24),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (_formErrorMessage != null) ...[
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                  decoration: BoxDecoration(
+                                    color: primaryRed.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: primaryRed.withOpacity(0.5)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.error_outline, color: primaryRed),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _formErrorMessage!,
+                                          style: GoogleFonts.poppins(
+                                            color: primaryRed,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              TextFormField(
+                                controller: _studentIdController,
+                                decoration: _getInputDecoration(
+                                  label: 'Student ID',
+                                  icon: Icons.badge_outlined,
+                                  hintText: 'Enter your student ID',
+                                ),
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  TextInputFormatter.withFunction((oldValue, newValue) {
+                                    String digits = newValue.text.replaceAll('-', '');
+                                    if (digits.length > 9) digits = digits.substring(0, 9);
+                                    String formatted = digits;
+                                    if (digits.length > 4) {
+                                      formatted = '${digits.substring(0, 4)}-${digits.substring(4)}';
+                                    }
+                                    return TextEditingValue(
+                                      text: formatted,
+                                      selection: TextSelection.collapsed(offset: formatted.length),
+                                    );
+                                  }),
+                                ],
+                                style: GoogleFonts.poppins(
+                                  color: textColor,
+                                  fontSize: 14,
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your Student ID';
+                                  }
+                                  final regex = RegExp(r'^\d{4}-\d{5}$');
+                                  if (!regex.hasMatch(value)) {
+                                    return 'Format must be 1234-56789';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _passwordController,
+                                decoration: _getInputDecoration(
+                                  label: 'Password',
+                                  icon: Icons.lock_outline,
+                                  hintText: 'Enter your password',
+                                ).copyWith(
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _showPassword ? Icons.visibility : Icons.visibility_off,
+                                      color: primaryRed,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _showPassword = !_showPassword;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                obscureText: !_showPassword,
+                                style: GoogleFonts.poppins(
+                                  color: textColor,
+                                  fontSize: 14,
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter your password';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: () {
+                                  if (_formKey.currentState!.validate()) {
+                                    setState(() {
+                                      _formErrorMessage = null;
+                                    });
+                                    // TODO: Implement authentication logic
+                                  } else {
+                                    setState(() {
+                                      _formErrorMessage = 'Please fill in all required fields correctly.';
+                                    });
+                                    _resetForm();
+                                    Future.delayed(const Duration(seconds: 3), () {
+                                      if (mounted && _formErrorMessage != null) {
+                                        setState(() {
+                                          _formErrorMessage = null;
+                                        });
+                                      }
+                                    });
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryRed,
+                                  foregroundColor: white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: Text(
+                                  'Sign in',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    PageRouteBuilder(
+                                      pageBuilder: (context, animation, secondaryAnimation) => const SignUpScreen(),
+                                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                        return ScaleTransition(
+                                          scale: CurvedAnimation(
+                                            parent: animation,
+                                            curve: Curves.easeInOut,
+                                          ),
+                                          child: child,
+                                        );
+                                      },
+                                      transitionDuration: const Duration(milliseconds: 500),
+                                    ),
+                                  );
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                ),
+                                child: Text(
+                                  'New to Findle? Create an account',
+                                  style: GoogleFonts.poppins(
+                                    color: primaryRed,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

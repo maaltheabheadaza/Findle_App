@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "77770642973",
+    "project_id": "findle-35fe7",
+    "storage_bucket": "findle-35fe7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:77770642973:android:c34b44c16aab5efd01d8f4",
+        "android_client_info": {
+          "package_name": "com.evsu.findle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABreZkyCuAfksSL_kvVQGUGfJ-bJ4wgF8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:77770642973:android:0229e235f62d02de01d8f4",
+        "android_client_info": {
+          "package_name": "com.example.findle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABreZkyCuAfksSL_kvVQGUGfJ-bJ4wgF8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
