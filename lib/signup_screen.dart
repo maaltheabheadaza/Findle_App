@@ -124,18 +124,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
         }
       });
     }
+
     // Password validation
-    final password = _passwordController.text;
+    final password = _passwordController.text.trim();
+
     if (password.isEmpty) {
       _passwordError = 'This field is required';
       hasError = true;
     } else {
       final hasUppercase = password.contains(RegExp(r'[A-Z]'));
       final hasNumber = password.contains(RegExp(r'[0-9]'));
-      final hasSymbol = password.contains(RegExp(r'[!@#\$%^&*(),.?":{}|<>]'));
+      final hasSymbol = password.contains(RegExp(r'[!@#\$%^&*(),_.?":{}|<>]'));
+
+      debugPrint('Password: "$password"');
+      debugPrint('Has uppercase? $hasUppercase');
+      debugPrint('Has number? $hasNumber');
+      debugPrint('Has symbol? $hasSymbol');
+
       if (!hasUppercase || !hasNumber || !hasSymbol) {
         _passwordError = 'Password must include an uppercase letter, a number, and a symbol';
-        _passwordController.clear();
+        // Avoid clearing input immediately, let user fix
+        // _passwordController.clear();
         hasError = true;
       }
     }
