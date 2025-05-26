@@ -156,12 +156,12 @@ class _LoginScreenState extends State<LoginScreen> {
       labelText: label,
       hintText: hintText,
       labelStyle: GoogleFonts.poppins(
-        color: hintColor,
+        color: hintColor.withValues(alpha: 0.7 * 255),
         fontSize: 14,
         fontWeight: FontWeight.w500,
       ),
       hintStyle: GoogleFonts.poppins(
-        color: hintColor.withOpacity(0.7),
+        color: hintColor.withValues(alpha: 0.7 * 255),
         fontSize: 14,
       ),
       prefixIcon: Icon(icon, color: primaryRed, size: 20),
@@ -170,11 +170,11 @@ class _LoginScreenState extends State<LoginScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: primaryRed.withValues(alpha: 0.2)),
+        borderSide: BorderSide(color: primaryRed.withValues(alpha: 0.2 * 255)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: primaryRed.withValues(alpha: 0.2)),
+        borderSide: BorderSide(color: primaryRed.withValues(alpha: 0.2 * 255)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -182,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: primaryRed.withValues(alpha: 0.5)),
+        borderSide: BorderSide(color: primaryRed.withValues(alpha: 0.5 * 255)),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -284,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: primaryRed.withOpacity(0.1),
+                              color: primaryRed.withValues(alpha: 0.1 * 255),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -301,9 +301,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   margin: const EdgeInsets.only(bottom: 16),
                                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                                   decoration: BoxDecoration(
-                                    color: primaryRed.withOpacity(0.1),
+                                    color: primaryRed.withValues(alpha: 0.1 * 255),
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: primaryRed.withOpacity(0.5)),
+                                    border: Border.all(color: primaryRed.withValues(alpha: 0.5 * 255)),
                                   ),
                                   child: Row(
                                     children: [
