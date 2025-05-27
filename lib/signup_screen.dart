@@ -15,7 +15,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _usernameController = TextEditingController();
-  final _studentIdController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -27,11 +26,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   // Add per-field error messages
   String? _emailError;
   String? _usernameError;
-  String? _studentIdError;
   String? _passwordError;
   String? _confirmPasswordError;
 
-  // Define colors as class fields (move from method scope)
+  // Define colors as class fields
   final Color primaryRed = const Color.fromRGBO(112, 1, 0, 1);
   final Color primaryYellow = const Color.fromRGBO(246, 196, 1, 1);
   final Color white = const Color(0xFFF3F3F3);
@@ -41,21 +39,74 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_clearEmailError);
+    _usernameController.addListener(_clearUsernameError);
+    _passwordController.addListener(_clearPasswordError);
+    _confirmPasswordController.addListener(_clearConfirmPasswordError);
+  }
+
+  @override
+  void dispose() {
+    _emailController.removeListener(_clearEmailError);
+    _usernameController.removeListener(_clearUsernameError);
+    _passwordController.removeListener(_clearPasswordError);
+    _confirmPasswordController.removeListener(_clearConfirmPasswordError);
+    _emailController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _clearEmailError() {
+    if (_emailError != null) {
+      setState(() {
+        _emailError = null;
+      });
+    }
+  }
+
+  void _clearUsernameError() {
+    if (_usernameError != null) {
+      setState(() {
+        _usernameError = null;
+      });
+    }
+  }
+
+  void _clearPasswordError() {
+    if (_passwordError != null) {
+      setState(() {
+        _passwordError = null;
+      });
+    }
+  }
+
+  void _clearConfirmPasswordError() {
+    if (_confirmPasswordError != null) {
+      setState(() {
+        _confirmPasswordError = null;
+      });
+    }
+  }
+
   Future<void> _validateAndSubmit() async {
     setState(() {
       _emailError = null;
       _usernameError = null;
-      _studentIdError = null;
       _passwordError = null;
       _confirmPasswordError = null;
       _formErrorMessage = null;
     });
-    bool allEmpty =
-        _emailController.text.isEmpty &&
-            _usernameController.text.isEmpty &&
-            _studentIdController.text.isEmpty &&
-            _passwordController.text.isEmpty &&
-            _confirmPasswordController.text.isEmpty;
+
+    bool allEmpty = _emailController.text.isEmpty &&
+        _usernameController.text.isEmpty &&
+        _passwordController.text.isEmpty &&
+        _confirmPasswordController.text.isEmpty;
+
     if (allEmpty) {
       setState(() {
         _formErrorMessage = 'All of the fields are required to fill in.';
@@ -69,7 +120,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       });
       return;
     }
+
     bool hasError = false;
+
     // Email validation
     final email = _emailController.text.trim();
     if (email.isEmpty) {
@@ -84,51 +137,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _emailController.clear();
       hasError = true;
     }
-    if (_emailError != null) {
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted && _emailError != null) {
-          setState(() {
-            _emailError = null;
-          });
-        }
-      });
-    }
+
     // Username validation
     if (_usernameController.text.trim().isEmpty) {
       _usernameError = 'This field is required';
       hasError = true;
     }
-    if (_usernameError != null) {
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted && _usernameError != null) {
-          setState(() {
-            _usernameError = null;
-          });
-        }
-      });
-    }
-    // Student ID validation
-    final studentId = _studentIdController.text.trim();
-    if (studentId.isEmpty) {
-      _studentIdError = 'This field is required';
-      hasError = true;
-    } else if (!RegExp(r'^\d{4}-\d{5}$').hasMatch(studentId)) {
-      _studentIdError = 'Format must be 1234-56789';
-      hasError = true;
-    }
-    if (_studentIdError != null) {
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted && _studentIdError != null) {
-          setState(() {
-            _studentIdError = null;
-          });
-        }
-      });
-    }
 
     // Password validation
     final password = _passwordController.text.trim();
-
     if (password.isEmpty) {
       _passwordError = 'This field is required';
       hasError = true;
@@ -137,131 +154,121 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final hasNumber = password.contains(RegExp(r'[0-9]'));
       final hasSymbol = password.contains(RegExp(r'[!@#\$%^&*(),_.?":{}|<>]'));
 
-      debugPrint('Password: "$password"');
-      debugPrint('Has uppercase? $hasUppercase');
-      debugPrint('Has number? $hasNumber');
-      debugPrint('Has symbol? $hasSymbol');
-
       if (!hasUppercase || !hasNumber || !hasSymbol) {
         _passwordError = 'Password must include an uppercase letter, a number, and a symbol';
-        // Avoid clearing input immediately, let user fix
-        // _passwordController.clear();
         hasError = true;
       }
     }
-    if (_passwordError != null) {
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted && _passwordError != null) {
-          setState(() {
-            _passwordError = null;
-          });
-        }
-      });
-    }
+
     // Confirm password validation
     final confirmPassword = _confirmPasswordController.text;
     if (confirmPassword.isEmpty) {
-      _confirmPasswordError = 'This field is required.';
+      _confirmPasswordError = 'This field is required';
       hasError = true;
     } else if (confirmPassword != password) {
-      _confirmPasswordError = "Passwords don't match.";
+      _confirmPasswordError = "Passwords don't match";
       hasError = true;
     }
-    if (_confirmPasswordError != null) {
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted && _confirmPasswordError != null) {
-          setState(() {
-            _confirmPasswordError = null;
-          });
-        }
-      });
-    }
+
     if (hasError) return;
 
     setState(() {
       _isLoading = true;
     });
-      
+
     try {
-      final response = await _supabase.auth.signUp(
+      // Attempt to sign up the user
+      final authResponse = await _supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
+        data: {
+          'display_name': _usernameController.text.trim(),
+        },
       );
 
-      final user = response.user;
-
-      if (user != null) {
-        final insertResponse = await _supabase.from('users').insert({
-          'id': user.id,
-          'name': _usernameController.text.trim(),
-          'student_id': _studentIdController.text.trim(),
-        });
-
-        if (insertResponse.error != null) {
-          throw Exception('Insert failed: ${insertResponse.error!.message}');
-        }
-      }
-    } catch (e) {
-      print('Error: $e');
-
-      if (mounted) {
+      if (authResponse.user != null) {
+        print('✅ User created with ID: ${authResponse.user!.id}');
+        
         // Show success dialog
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext dialogContext) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            backgroundColor: white,
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.check_circle_rounded, color: primaryRed, size: 48),
-                const SizedBox(height: 16),
-               Text(
-                'Registration Successful!',
-                style: GoogleFonts.poppins(
-                  color: primaryRed,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Please check your email to verify your account before logging in.',
-                style: GoogleFonts.poppins(
-                  color: textColor,
-                  fontSize: 15,
-                ),
-                textAlign: TextAlign.center,
-              ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryRed,
-                      foregroundColor: white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 0,
+        if (mounted) {
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext dialogContext) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              backgroundColor: white,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle_rounded, color: primaryRed, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Registration Successful!\nPlease check your email to confirm your account.',
+                    style: GoogleFonts.poppins(
+                      color: primaryRed,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
-                    onPressed: () {
-                      Navigator.of(dialogContext).pop(); // Close dialog
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
-                        (route) => false,
-                      );
-                    },
-                    child: Text(
-                      'OK',
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryRed,
+                        foregroundColor: white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop(); // Close dialog
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                          (route) => false,
+                        );
+                      },
+                      child: Text(
+                        'OK',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
+          );
+        }
+      } else {
+         // Handle cases where user is null but no exception was thrown (shouldn't happen with signUp usually)
+         print('⚠️ Signup returned null user.');
+         setState(() {
+           _formErrorMessage = 'Registration failed unexpectedly.';
+         });
+      }
+
+    } on AuthException catch (error) {
+      print('❌ Supabase Auth error: ${error.message}');
+      if (mounted) {
+        if (error.message.contains('already registered') || error.message.contains('exists')) {
+          setState(() {
+            _emailError = 'Email is already in use.';
+            _formErrorMessage = null; // Clear form error if email error is shown
+          });
+        } else {
+          setState(() {
+            _formErrorMessage = 'Registration failed: ${error.message}';
+             _emailError = null; // Clear email error if form error is shown
+          });
+        }
+      }
+    } catch (error) {
+      print('❌ Generic registration error: $error');
+      if (mounted) {
+        setState(() {
+          _formErrorMessage = 'An unexpected error occurred. Please try again.';
+           _emailError = null; // Clear email error if form error is shown
+        });
       }
     } finally {
       if (mounted) {
@@ -468,6 +475,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   color: textColor,
                                   fontSize: 14,
                                 ),
+                                onChanged: (value) {
+                                  // Trigger validation on change to provide immediate feedback
+                                  _formKey.currentState?.validate();
+                                },
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'This field is required';
+                                  }
+                                  // Basic email format validation
+                                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(value)) {
+                                    return 'Please enter a valid email address';
+                                  }
+                                  return null;
+                                },
                               ),
                               const SizedBox(height: 16),
                               // Username error
@@ -491,49 +512,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   icon: Icons.person_outline,
                                   hintText: 'Choose a username',
                                 ),
-                                style: GoogleFonts.poppins(
-                                  color: textColor,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              // Student ID error
-                              if (_studentIdError != null) ...[
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: Text(
-                                    _studentIdError!,
-                                    style: GoogleFonts.poppins(
-                                      color: primaryRed,
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                              TextFormField(
-                                controller: _studentIdController,
-                                decoration: _getInputDecoration(
-                                  label: 'Student ID',
-                                  icon: Icons.badge_outlined,
-                                  hintText: 'Enter your student ID',
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  TextInputFormatter.withFunction((oldValue, newValue) {
-                                    String digits = newValue.text.replaceAll('-', '');
-                                    if (digits.length > 9) digits = digits.substring(0, 9);
-                                    String formatted = digits;
-                                    if (digits.length > 4) {
-                                      formatted = '${digits.substring(0, 4)}-${digits.substring(4)}';
-                                    }
-                                    return TextEditingValue(
-                                      text: formatted,
-                                      selection: TextSelection.collapsed(offset: formatted.length),
-                                    );
-                                  }),
-                                ],
                                 style: GoogleFonts.poppins(
                                   color: textColor,
                                   fontSize: 14,
