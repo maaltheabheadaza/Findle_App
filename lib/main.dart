@@ -4,6 +4,8 @@ import 'package:app_links/app_links.dart';
 import 'login_screen.dart';
 import 'homepage_screen.dart';
 import 'email_confirmation_screen.dart';
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +16,12 @@ void main() async {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3d3Z0enVtYnh6dW9ud2p1YnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwODg5NjIsImV4cCI6MjA2MzY2NDk2Mn0.c7nn16RL_e6_ybeeY9DzNPGXdLDDL279JjIAR7sP15E',                // Replace with your Supabase anon key
   );
 
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => ThemeProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -59,9 +66,12 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp(
       title: 'Findle',
       debugShowCheckedModeBanner: false,
+      themeMode: themeProvider.themeMode,
       theme: ThemeData(
         colorScheme: const ColorScheme.light(
           primary: Color.fromRGBO(112, 1, 0, 1),   // #700100
@@ -83,6 +93,30 @@ class _MyAppState extends State<MyApp> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: Color.fromRGBO(112, 1, 0, 1)),
+          ),
+        ),
+      ),
+      darkTheme: ThemeData(
+        colorScheme: const ColorScheme.dark(
+          primary: Color.fromRGBO(112, 1, 0, 1),   // #700100 (can be different for dark mode)
+          secondary: Color.fromRGBO(246, 196, 1, 1), // #f6c401 (can be different for dark mode)
+          surface: Color.fromRGBO(51, 51, 51, 1), // #333333
+        ),
+        useMaterial3: true,
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.grey[800],
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey[700]!),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey[700]!),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color.fromRGBO(246, 196, 1, 1)),
           ),
         ),
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
+import 'settings_screen.dart';
 
 class HomePageScreen extends StatefulWidget {
   const HomePageScreen({super.key});
@@ -19,6 +20,9 @@ class _HomePageScreenState extends State<HomePageScreen> {
   String? username;
   String? profileImageUrl;
   bool isLoading = true;
+  
+  // Track selected menu item
+  int _selectedIndex = -1;
 
   @override
   void initState() {
@@ -132,86 +136,55 @@ class _HomePageScreenState extends State<HomePageScreen> {
                   ],
                 ),
               ),
-              ListTile(
-                leading: const Icon(Icons.post_add, color: Colors.grey),
-                title: Text(
-                  'Posts',
-                  style: GoogleFonts.poppins(
-                    color: textColor,
-                    fontSize: 16,
-                  ),
-                ),
+              _buildDrawerItem(
+                icon: Icons.post_add,
+                title: 'Posts',
+                index: 0,
                 onTap: () {
                   // TODO: Navigate to posts screen
-                  Navigator.pop(context);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.favorite, color: Colors.grey),
-                title: Text(
-                  'Favourites',
-                  style: GoogleFonts.poppins(
-                    color: textColor,
-                    fontSize: 16,
-                  ),
-                ),
+              _buildDrawerItem(
+                icon: Icons.favorite,
+                title: 'Favourites',
+                index: 1,
                 onTap: () {
                   // TODO: Navigate to favourites screen
-                  Navigator.pop(context);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.message, color: Colors.grey),
-                title: Text(
-                  'Messages',
-                  style: GoogleFonts.poppins(
-                    color: textColor,
-                    fontSize: 16,
-                  ),
-                ),
+              _buildDrawerItem(
+                icon: Icons.message,
+                title: 'Messages',
+                index: 2,
                 onTap: () {
                   // TODO: Navigate to messages screen
-                  Navigator.pop(context);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.info, color: Colors.grey),
-                title: Text(
-                  'About Us',
-                  style: GoogleFonts.poppins(
-                    color: textColor,
-                    fontSize: 16,
-                  ),
-                ),
+              _buildDrawerItem(
+                icon: Icons.info,
+                title: 'About Us',
+                index: 3,
                 onTap: () {
                   // TODO: Navigate to about us screen
-                  Navigator.pop(context);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.settings, color: Colors.grey),
-                title: Text(
-                  'Settings',
-                  style: GoogleFonts.poppins(
-                    color: textColor,
-                    fontSize: 16,
-                  ),
-                ),
+              _buildDrawerItem(
+                icon: Icons.settings,
+                title: 'Settings',
+                index: 4,
                 onTap: () {
-                  // TODO: Navigate to settings screen
                   Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                  );
                 },
               ),
               const Divider(),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.grey),
-                title: Text(
-                  'Log out',
-                  style: GoogleFonts.poppins(
-                    color: textColor,
-                    fontSize: 16,
-                  ),
-                ),
+              _buildDrawerItem(
+                icon: Icons.logout,
+                title: 'Log out',
+                index: 5,
                 onTap: () async {
                   final confirmed = await showDialog<bool>(
                     context: context,
@@ -221,11 +194,11 @@ class _HomePageScreenState extends State<HomePageScreen> {
                         content: Text('Are you sure you want to log out?'),
                         actions: <Widget>[
                           TextButton(
-                            onPressed: () => Navigator.of(context).pop(false), // Return false on cancel
+                            onPressed: () => Navigator.of(context).pop(false),
                             child: Text('Cancel'),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.of(context).pop(true), // Return true on confirm
+                            onPressed: () => Navigator.of(context).pop(true),
                             child: Text('Logout'),
                           ),
                         ],
@@ -250,16 +223,88 @@ class _HomePageScreenState extends State<HomePageScreen> {
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: primaryRed))
-          : Center(
-              child: Text(
-                'Welcome to Findle!',
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
+          : Stack(
+              children: [
+                // Patterned background with many student-related icons
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.13,
+                    child: Stack(
+                      children: [
+                        // Row 1
+                        Positioned(top: 40, left: 20, child: Icon(Icons.book_rounded, size: 50, color: primaryRed)),
+                        Positioned(top: 80, right: 30, child: Icon(Icons.backpack_rounded, size: 40, color: primaryYellow)),
+                        Positioned(top: 60, left: 120, child: Icon(Icons.laptop_mac_rounded, size: 35, color: primaryYellow)),
+                        Positioned(top: 120, right: 100, child: Icon(Icons.edit_note_rounded, size: 30, color: primaryRed)),
+                        Positioned(top: 30, right: 80, child: Icon(Icons.science_rounded, size: 38, color: primaryRed)),
+                        // Row 2
+                        Positioned(top: 180, left: 60, child: Icon(Icons.search_rounded, size: 40, color: primaryRed)),
+                        Positioned(top: 200, right: 40, child: Icon(Icons.school_rounded, size: 45, color: primaryYellow)),
+                        Positioned(top: 220, left: 180, child: Icon(Icons.calculate_rounded, size: 32, color: primaryYellow)),
+                        Positioned(top: 160, right: 120, child: Icon(Icons.palette_rounded, size: 36, color: primaryRed)),
+                        // Row 3
+                        Positioned(bottom: 220, left: 40, child: Icon(Icons.menu_book_rounded, size: 40, color: primaryRed)),
+                        Positioned(bottom: 200, right: 60, child: Icon(Icons.sports_esports_rounded, size: 38, color: primaryYellow)),
+                        Positioned(bottom: 180, left: 120, child: Icon(Icons.headphones_rounded, size: 32, color: primaryYellow)),
+                        Positioned(bottom: 160, right: 100, child: Icon(Icons.coffee_rounded, size: 36, color: primaryRed)),
+                        // Row 4
+                        Positioned(bottom: 120, left: 60, child: Icon(Icons.search_rounded, size: 40, color: primaryRed)),
+                        Positioned(bottom: 60, right: 80, child: Icon(Icons.laptop_mac_rounded, size: 55, color: primaryYellow)),
+                        Positioned(bottom: 40, left: 180, child: Icon(Icons.edit_note_rounded, size: 45, color: primaryRed)),
+                        Positioned(bottom: 30, right: 30, child: Icon(Icons.science_rounded, size: 38, color: primaryRed)),
+                        // Extra scattered
+                        Positioned(top: 300, left: 30, child: Icon(Icons.book_rounded, size: 30, color: primaryRed)),
+                        Positioned(top: 350, right: 60, child: Icon(Icons.backpack_rounded, size: 30, color: primaryYellow)),
+                        Positioned(bottom: 300, left: 100, child: Icon(Icons.palette_rounded, size: 28, color: primaryRed)),
+                        Positioned(bottom: 350, right: 120, child: Icon(Icons.calculate_rounded, size: 28, color: primaryYellow)),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+                // Main content
+                Center(
+                  child: Text(
+                    'Welcome to Findle!',
+                    style: GoogleFonts.poppins(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+              ],
             ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required int index,
+    required VoidCallback onTap,
+  }) {
+    final bool isSelected = _selectedIndex == index;
+    
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: isSelected ? primaryRed : Colors.grey,
+      ),
+      title: Text(
+        title,
+        style: GoogleFonts.poppins(
+          color: isSelected ? primaryRed : textColor,
+          fontSize: 16,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      selected: isSelected,
+      onTap: () {
+        setState(() {
+          _selectedIndex = index;
+        });
+        onTap();
+      },
     );
   }
 } 
