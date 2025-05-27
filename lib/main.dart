@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
+import 'homepage_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,19 +64,22 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
-  String? userEmail;
+  String? displayName;
 
   @override
   void initState() {
     super.initState();
-    fetchEmail();
+    fetchUserData();
   }
 
-  void fetchEmail() {
+  void fetchUserData() {
     final user = Supabase.instance.client.auth.currentUser;
-    setState(() {
-      userEmail = user?.email ?? 'No email found';
-    });
+    if (user != null) {
+      setState(() {
+        displayName = user.userMetadata?['display_name'] as String? ?? 
+                     user.email?.split('@')[0] ?? 'User';
+      });
+    }
   }
 
   void _incrementCounter() {
@@ -90,12 +94,27 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () async {
+              await Supabase.instance.client.auth.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ],
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            if (userEmail != null) Text('Logged in as: $userEmail'),
+            if (displayName != null) Text('Logged in as: $displayName'),
             const SizedBox(height: 20),
             const Text('You have pushed the button this many times:'),
             Text(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'signup_screen.dart'; // Import the SignUpScreen
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'main.dart';
+import 'homepage_screen.dart';
 
 
 // AnimatedLogo widget for animated logo symbols
@@ -389,239 +389,7 @@ void _clearErrorMessage() {
                               ),
                               const SizedBox(height: 24),
                               ElevatedButton(
-                                onPressed: () async {
-                                  print("Sign in button pressed");
-
-                                  if (_formKey.currentState!.validate()) {
-                                    final email = _emailController.text.trim();
-                                    final password = _passwordController.text;
-                                    try {
-                                      final response = await Supabase.instance.client.auth
-                                          .signInWithPassword(email: email, password: password);
-
-                                      if (response.user != null) {
-                                        print('✅ Signed in as: ${response.user!.email}');
-                                        await showDialog(
-                                          context: context,
-                                          barrierDismissible: false,
-                                          builder: (BuildContext dialogContext) => AlertDialog(
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                            backgroundColor: white,
-                                            content: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(Icons.check_circle_rounded, color: primaryRed, size: 48),
-                                                const SizedBox(height: 16),
-                                                Text(
-                                                  'Login Successful!',
-                                                  style: GoogleFonts.poppins(
-                                                    color: primaryRed,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 18,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Text(
-                                                  'Welcome ${response.user!.email}',
-                                                  style: GoogleFonts.poppins(
-                                                    color: textColor,
-                                                    fontSize: 15,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                                const SizedBox(height: 24),
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  child: ElevatedButton(
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: primaryRed,
-                                                      foregroundColor: white,
-                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                      elevation: 0,
-                                                    ),
-                                                    onPressed: () {
-                                                      Navigator.of(dialogContext).pop(); // Close dialog
-                                                      Navigator.pushReplacement(
-                                                                context,
-                                                                MaterialPageRoute(
-                                                                  builder: (context) => const MyHomePage(title: 'Welcome'),
-                                                                ),
-                                                              );
-                                                    },
-                                                    child: Text(
-                                                      'OK',
-                                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      } else {
-                                        await showDialog(
-                                          context: context,
-                                          barrierDismissible: false,
-                                          builder: (BuildContext dialogContext) => AlertDialog(
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                            backgroundColor: white,
-                                            content: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(Icons.error_rounded, color: Colors.red, size: 48),
-                                                const SizedBox(height: 16),
-                                                Text(
-                                                  'Login Failed',
-                                                  style: GoogleFonts.poppins(
-                                                    color: Colors.red,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 18,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Text(
-                                                  'Invalid email or password.',
-                                                  style: GoogleFonts.poppins(
-                                                    color: textColor,
-                                                    fontSize: 15,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                                const SizedBox(height: 24),
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  child: ElevatedButton(
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: primaryRed,
-                                                      foregroundColor: white,
-                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                      elevation: 0,
-                                                    ),
-                                                    onPressed: () {
-                                                      Navigator.of(dialogContext).pop();
-                                                    },
-                                                    child: Text(
-                                                      'OK',
-                                                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    } catch (error) {
-                                      await showDialog(
-                                        context: context,
-                                        barrierDismissible: false,
-                                        builder: (BuildContext dialogContext) => AlertDialog(
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                          backgroundColor: white,
-                                          content: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.error_rounded, color: Colors.red, size: 48),
-                                              const SizedBox(height: 16),
-                                              Text(
-                                                'Login Failed',
-                                                style: GoogleFonts.poppins(
-                                                  color: Colors.red,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 18,
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                'Login failed: ${error.toString()}',
-                                                style: GoogleFonts.poppins(
-                                                  color: textColor,
-                                                  fontSize: 15,
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                              const SizedBox(height: 24),
-                                              SizedBox(
-                                                width: double.infinity,
-                                                child: ElevatedButton(
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor: primaryRed,
-                                                    foregroundColor: white,
-                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                    elevation: 0,
-                                                  ),
-                                                  onPressed: () {
-                                                    Navigator.of(dialogContext).pop();
-                                                  },
-                                                  child: Text(
-                                                    'OK',
-                                                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  } else {
-                                    await showDialog(
-                                      context: context,
-                                      barrierDismissible: false,
-                                      builder: (BuildContext dialogContext) => AlertDialog(
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                        backgroundColor: white,
-                                        content: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.error_rounded, color: Colors.red, size: 48),
-                                            const SizedBox(height: 16),
-                                            Text(
-                                              'Form Incomplete',
-                                              style: GoogleFonts.poppins(
-                                                color: Colors.red,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 18,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              'All of the fields are required to fill in.',
-                                              style: GoogleFonts.poppins(
-                                                color: textColor,
-                                                fontSize: 15,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                            const SizedBox(height: 24),
-                                            SizedBox(
-                                              width: double.infinity,
-                                              child: ElevatedButton(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: primaryRed,
-                                                  foregroundColor: white,
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                  elevation: 0,
-                                                ),
-                                                onPressed: () {
-                                                  Navigator.of(dialogContext).pop();
-                                                },
-                                                child: Text(
-                                                  'OK',
-                                                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
+                                onPressed: _handleLogin,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: primaryRed,
                                   foregroundColor: white,
@@ -693,5 +461,193 @@ void _clearErrorMessage() {
         ),
       ),
     );
+  }
+
+  Future<void> _handleLogin() async {
+    if (_formKey.currentState!.validate()) {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      try {
+        final response = await Supabase.instance.client.auth.signInWithPassword(
+          email: email,
+          password: password,
+        );
+
+        if (response.user != null) {
+          // Check if email is verified
+          if (response.user!.emailConfirmedAt != null) {
+            print('✅ Signed in as: ${response.user!.email}');
+            
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext dialogContext) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                backgroundColor: white,
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: primaryRed, size: 48),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Login Successful!',
+                      style: GoogleFonts.poppins(
+                        color: primaryRed,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Welcome ${response.user!.userMetadata?['display_name']! as String? ?? response.user!.email?.split('@')[0] ?? 'User'}',
+                      style: GoogleFonts.poppins(
+                        color: textColor,
+                        fontSize: 15,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryRed,
+                          foregroundColor: white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop(); // Close dialog
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HomePageScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'OK',
+                          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          } else {
+            // Email not verified
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext dialogContext) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                backgroundColor: white,
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.warning_rounded, color: Colors.orange, size: 48),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Email Not Verified',
+                      style: GoogleFonts.poppins(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Email isn\'t verified yet. Confirm it by clicking the link sent to your gmail account.',
+                      style: GoogleFonts.poppins(
+                        color: textColor,
+                        fontSize: 15,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryRed,
+                          foregroundColor: white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
+                        child: Text(
+                          'OK',
+                          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        }
+      } catch (error) {
+        print('❌ Login error: $error');
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: white,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_rounded, color: Colors.red, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'Login Failed',
+                  style: GoogleFonts.poppins(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Invalid email or password.',
+                  style: GoogleFonts.poppins(
+                    color: textColor,
+                    fontSize: 15,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryRed,
+                      foregroundColor: white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                    },
+                    child: Text(
+                      'OK',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
   }
 }
