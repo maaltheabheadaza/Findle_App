@@ -469,7 +469,7 @@ void _clearErrorMessage() {
                                             content: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Icon(Icons.error_rounded, color: Colors.red, size: 48),
+                                                const Icon(Icons.error_rounded, color: Colors.red, size: 48),
                                                 const SizedBox(height: 16),
                                                 Text(
                                                   'Login Failed',
@@ -523,7 +523,7 @@ void _clearErrorMessage() {
                                           content: Column(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.error_rounded, color: Colors.red, size: 48),
+                                              const Icon(Icons.error_rounded, color: Colors.red, size: 48),
                                               const SizedBox(height: 16),
                                               Text(
                                                 'Login Failed',
@@ -577,7 +577,7 @@ void _clearErrorMessage() {
                                         content: Column(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(Icons.error_rounded, color: Colors.red, size: 48),
+                                            const Icon(Icons.error_rounded, color: Colors.red, size: 48),
                                             const SizedBox(height: 16),
                                             Text(
                                               'Form Incomplete',
