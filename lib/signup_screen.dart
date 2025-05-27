@@ -166,7 +166,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _confirmPasswordError = 'This field is required';
       hasError = true;
     } else if (confirmPassword != password) {
-      _confirmPasswordError = "Passwords don't match";
+      _confirmPasswordError = "Passwords don't match.";
       hasError = true;
     }
 
