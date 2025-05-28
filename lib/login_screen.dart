@@ -501,7 +501,7 @@ void _clearErrorMessage() {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Welcome ${response.user!.userMetadata?['display_name']! as String? ?? response.user!.email?.split('@')[0] ?? 'User'}',
+                      'Welcome ${response.user?.userMetadata?['username'] ?? response.user?.email?.split('@')[0] ?? 'User'}',
                       style: GoogleFonts.poppins(
                         color: textColor,
                         fontSize: 15,

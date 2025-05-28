@@ -3,7 +3,90 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
+import 'create_ad.dart';
+import 'lost_and_found.dart';
 
+class AppColors {
+  static const white = Color(0xFFF3F3F3);
+  static const maroon = Color(0xFF700100);
+  static const yellow = Color(0xFFF6C401);
+  static const lightGray = Color(0xFFF5F5F5);
+  static const darkGray = Color(0xFF4A4A4A);
+  static const gray = Color(0xFF7E7E7E);
+  static const paleYellow = Color.fromARGB(255, 244, 216, 125); 
+  static const paleMaroon = Color.fromARGB(255, 138, 26, 26);
+}
+
+void showAboutUsDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AppColors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      title: const Text(
+        'About Findle',
+        style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: AppColors.maroon,
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Text(
+            'Developed by:',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.darkGray,
+              fontSize: 16,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text('• Ma. Althea Bhea Daza'),
+          Text('• Stephanie Angel Nudalo'),
+          Text('• Geraldyn Boholst'),
+          SizedBox(height: 12),
+          Text(
+            'BS Information Technology\nEastern Visayas State University - Ormoc Campus',
+            style: TextStyle(
+              fontStyle: FontStyle.italic,
+              color: AppColors.gray,
+            ),
+          ),
+          SizedBox(height: 16),
+          Text(
+            'About Findle:',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: AppColors.darkGray,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Findle is a campus-based lost and found system designed exclusively for EVSU-Ormoc students. '
+            'It allows users to report lost or found items efficiently and connect with rightful owners '
+            'within the school community. This project aims to promote honesty, responsibility, and convenience.',
+            style: TextStyle(height: 1.4),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text(
+            'Close',
+            style: TextStyle(color: AppColors.maroon),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 class HomePageScreen extends StatefulWidget {
   const HomePageScreen({super.key});
 
@@ -91,10 +174,9 @@ class _HomePageScreenState extends State<HomePageScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.search, color: white),
-            onPressed: () {
-              // TODO: Implement search functionality
-            },
+            icon: const Icon(Icons.info_outline, color: AppColors.yellow),
+            tooltip: 'About Us',
+            onPressed: () => showAboutUsDialog(context),
           ),
         ],
       ),
@@ -126,7 +208,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Hi, $username!',
+                      '@$username',
                       style: GoogleFonts.poppins(
                         color: white,
                         fontSize: 18,
@@ -165,7 +247,8 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 title: 'About Us',
                 index: 3,
                 onTap: () {
-                  // TODO: Navigate to about us screen
+                  Navigator.pop(context); // optional: close the drawer
+                  showAboutUsDialog(context);
                 },
               ),
               _buildDrawerItem(
@@ -186,34 +269,63 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 title: 'Log out',
                 index: 5,
                 onTap: () async {
-                  final confirmed = await showDialog<bool>(
+                  final shouldLogout = await showDialog<bool>(
                     context: context,
                     builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: Text('Confirm Logout'),
-                        content: Text('Are you sure you want to log out?'),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: Text('Cancel'),
+                      return Dialog(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        child: Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: Text('Logout'),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.logout, size: 50, color: AppColors.maroon),
+                              const SizedBox(height: 15),
+                              const Text(
+                                'Are you sure you want to log out?',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.darkGray,
+                                ),
+                              ),
+                              const SizedBox(height: 23),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.lightGray,
+                                      foregroundColor: AppColors.darkGray,
+                                    ),
+                                    onPressed: () => Navigator.of(context).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.maroon,
+                                      foregroundColor: AppColors.yellow,
+                                    ),
+                                    onPressed: () => Navigator.of(context).pop(true),
+                                    child: const Text('Logout'),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       );
                     },
                   );
 
-                  if (confirmed == true) {
+                  if (shouldLogout ?? false) {
                     await Supabase.instance.client.auth.signOut();
-                    if (mounted) {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
-                        (route) => false,
-                      );
-                    }
+                    Navigator.pushReplacementNamed(context, '/');
                   }
                 },
               ),
@@ -263,13 +375,76 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 ),
                 // Main content
                 Center(
-                  child: Text(
-                    'Welcome to Findle!',
-                    style: GoogleFonts.poppins(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Welcome to Findle!',
+                        style: GoogleFonts.poppins(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: 250,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.6),
+                            side: const BorderSide(color: AppColors.maroon, width: 1.5),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => CreateAdPage()),
+                            );
+                          },
+                          icon: const Icon(Icons.campaign_rounded, color: AppColors.maroon),
+                          label: Text(
+                            'Create a post',
+                            style: GoogleFonts.poppins(
+                              color: AppColors.maroon,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: 250,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.6),
+                            side: const BorderSide(color: AppColors.yellow, width: 1.5),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => LostAndFoundPage()),
+                            );
+                          },
+                          icon: const Icon(Icons.search_rounded, color: AppColors.yellow),
+                          label: Text(
+                            'Lost and Found',
+                            style: GoogleFonts.poppins(
+                              color: AppColors.yellow,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
