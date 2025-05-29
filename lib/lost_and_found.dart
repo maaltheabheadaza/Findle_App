@@ -21,11 +21,12 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
   bool _isLoading = true;
 
   final List<String> _categories = [
-    'Electronics', 'Clothing', 'Documents', 'Other'
+    'Electronics',
+    'Clothing',
+    'Documents',
+    'Other'
   ];
-  final List<String> _types = [
-    'Lost', 'Found'
-  ];
+  final List<String> _types = ['Lost', 'Found'];
 
   @override
   void initState() {
@@ -76,7 +77,8 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
         }
         if (_selectedDate != null) {
           matches = matches &&
-              createdAt.startsWith(_selectedDate!.toIso8601String().substring(0, 10));
+              createdAt.startsWith(
+                  _selectedDate!.toIso8601String().substring(0, 10));
         }
         return matches;
       }).toList();
@@ -138,9 +140,9 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
         elevation: 1,
         title: SizedBox(
           width: 300,
-          child: const Text(
-            'Lost & Found Newsfeed',
-            style: TextStyle(
+          child: Text(
+            widget.userId != null ? 'My Posts' : 'Lost & Found Newsfeed',
+            style: const TextStyle(
               color: AppColors.maroon,
               fontWeight: FontWeight.w600,
               fontSize: 20,
@@ -173,11 +175,14 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                         controller: _searchController,
                         decoration: InputDecoration(
                           labelText: 'Search items...',
-                          prefixIcon: Icon(Icons.search, color: AppColors.maroon),
+                          prefixIcon:
+                              Icon(Icons.search, color: AppColors.maroon),
                           filled: true,
                           fillColor: AppColors.white,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 0),
                         ),
                       ),
                     ),
@@ -198,16 +203,20 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                         value: _selectedCategory,
                         decoration: InputDecoration(
                           labelText: 'Category',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 0),
                           filled: true,
                           fillColor: AppColors.white,
                         ),
                         items: [
-                          const DropdownMenuItem(value: null, child: Text('All')),
+                          const DropdownMenuItem(
+                              value: null, child: Text('All')),
                           ..._categories.map((cat) => DropdownMenuItem(
                                 value: cat,
-                                child: Text(cat, overflow: TextOverflow.ellipsis),
+                                child:
+                                    Text(cat, overflow: TextOverflow.ellipsis),
                               )),
                         ],
                         onChanged: (value) {
@@ -224,13 +233,16 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                         value: _selectedType,
                         decoration: InputDecoration(
                           labelText: 'Type',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 0),
                           filled: true,
                           fillColor: AppColors.white,
                         ),
                         items: [
-                          const DropdownMenuItem(value: null, child: Text('All')),
+                          const DropdownMenuItem(
+                              value: null, child: Text('All')),
                           ..._types.map((type) => DropdownMenuItem(
                                 value: type,
                                 child: Text(type),
@@ -250,15 +262,19 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                         style: OutlinedButton.styleFrom(
                           backgroundColor: AppColors.white,
                           side: BorderSide(color: AppColors.gray),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 0),
                         ),
-                        icon: const Icon(Icons.calendar_today, size: 16, color: AppColors.maroon),
+                        icon: const Icon(Icons.calendar_today,
+                            size: 16, color: AppColors.maroon),
                         label: Text(
                           _selectedDate == null
                               ? 'Date'
                               : '${_selectedDate!.month}/${_selectedDate!.day}',
-                          style: const TextStyle(color: AppColors.maroon, fontSize: 13),
+                          style: const TextStyle(
+                              color: AppColors.maroon, fontSize: 13),
                           overflow: TextOverflow.ellipsis,
                         ),
                         onPressed: () => _pickDate(context),
@@ -285,16 +301,19 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                               itemBuilder: (context, index) {
                                 final post = _filteredPosts[index];
                                 // Debug print for user_id
-                                print('post user_id: ${post['user_id']} | current user: ${currentUser?.id}');
+                                print(
+                                    'post user_id: ${post['user_id']} | current user: ${currentUser?.id}');
                                 return Card(
                                   color: AppColors.white,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(16),
                                   ),
-                                  margin: const EdgeInsets.symmetric(vertical: 10),
+                                  margin:
+                                      const EdgeInsets.symmetric(vertical: 10),
                                   elevation: 3,
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       // Image
                                       ClipRRect(
@@ -302,29 +321,36 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                                           topLeft: Radius.circular(16),
                                           topRight: Radius.circular(16),
                                         ),
-                                        child: post['image_url'] != null && post['image_url'] != ''
+                                        child: post['image_url'] != null &&
+                                                post['image_url'] != ''
                                             ? Image.network(
                                                 post['image_url'],
                                                 width: double.infinity,
                                                 height: 180,
                                                 fit: BoxFit.cover,
-                                                errorBuilder: (c, e, s) => Container(
+                                                errorBuilder: (c, e, s) =>
+                                                    Container(
                                                   height: 180,
                                                   color: AppColors.lightGray,
-                                                  child: Icon(Icons.image, color: AppColors.gray, size: 48),
+                                                  child: Icon(Icons.image,
+                                                      color: AppColors.gray,
+                                                      size: 48),
                                                 ),
                                               )
                                             : Container(
                                                 width: double.infinity,
                                                 height: 180,
                                                 color: AppColors.lightGray,
-                                                child: Icon(Icons.inventory, color: AppColors.maroon, size: 48),
+                                                child: Icon(Icons.inventory,
+                                                    color: AppColors.maroon,
+                                                    size: 48),
                                               ),
                                       ),
                                       Padding(
                                         padding: const EdgeInsets.all(16),
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             // Title
                                             Text(
@@ -339,53 +365,75 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                                             // Description
                                             Text(
                                               post['description'] ?? '',
-                                              style: const TextStyle(fontSize: 15),
+                                              style:
+                                                  const TextStyle(fontSize: 15),
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                             const SizedBox(height: 10),
-                                           // ...existing code...
+                                            // ...existing code...
                                             // Info row
                                             SingleChildScrollView(
                                               scrollDirection: Axis.horizontal,
                                               child: Row(
                                                 children: [
                                                   Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2),
                                                     decoration: BoxDecoration(
-                                                      color: post['post_type'] == 'Lost'
-                                                          ? AppColors.paleMaroon
-                                                          : AppColors.paleYellow,
-                                                      borderRadius: BorderRadius.circular(8),
+                                                      color:
+                                                          post['post_type'] ==
+                                                                  'Lost'
+                                                              ? AppColors
+                                                                  .paleMaroon
+                                                              : AppColors
+                                                                  .paleYellow,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8),
                                                     ),
                                                     child: Text(
                                                       post['post_type'] ?? '',
                                                       style: TextStyle(
-                                                        color: post['post_type'] == 'Lost'
-                                                            ? AppColors.white
-                                                            : AppColors.maroon,
-                                                        fontWeight: FontWeight.w600,
+                                                        color:
+                                                            post['post_type'] ==
+                                                                    'Lost'
+                                                                ? AppColors
+                                                                    .white
+                                                                : AppColors
+                                                                    .maroon,
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                         fontSize: 12,
                                                       ),
                                                     ),
                                                   ),
                                                   const SizedBox(width: 8),
                                                   ConstrainedBox(
-                                                    constraints: const BoxConstraints(maxWidth: 80),
+                                                    constraints:
+                                                        const BoxConstraints(
+                                                            maxWidth: 80),
                                                     child: Text(
                                                       post['category'] ?? '',
                                                       style: const TextStyle(
                                                         color: AppColors.gray,
                                                         fontSize: 12,
                                                       ),
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                   ),
                                                   const SizedBox(width: 8),
-                                                  Icon(Icons.access_time, size: 14, color: AppColors.gray),
+                                                  Icon(Icons.access_time,
+                                                      size: 14,
+                                                      color: AppColors.gray),
                                                   Text(
                                                     post['created_at'] != null
-                                                        ? post['created_at'].toString().substring(0, 10)
+                                                        ? post['created_at']
+                                                            .toString()
+                                                            .substring(0, 10)
                                                         : '',
                                                     style: const TextStyle(
                                                       color: AppColors.gray,
@@ -393,57 +441,92 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                                                     ),
                                                   ),
                                                   const SizedBox(width: 8),
-                                                  Icon(Icons.message, color: AppColors.maroon, size: 22),
+                                                  Icon(Icons.message,
+                                                      color: AppColors.maroon,
+                                                      size: 22),
                                                   // Edit/Delete buttons for owner
-                                                  if (post['user_id'] == currentUser?.id)
+                                                  if (post['user_id'] ==
+                                                      currentUser?.id)
                                                     Row(
-                                                      mainAxisAlignment: MainAxisAlignment.end,
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment.end,
                                                       children: [
                                                         IconButton(
-                                                           icon: Icon(Icons.edit, color: AppColors.maroon),
-                                                            tooltip: 'Edit',
-                                                            onPressed: () async {
-                                                              // Replace 'CreateAdScreen' with your actual screen name
-                                                              final updated = await Navigator.push(
-                                                                context,
-                                                                MaterialPageRoute(
-                                                                  builder: (context) => CreateAdScreen(
-                                                                    post: post, // Pass the post data
-                                                                    isEdit: true,
-                                                                  ),
+                                                          icon: Icon(Icons.edit,
+                                                              color: AppColors
+                                                                  .maroon),
+                                                          tooltip: 'Edit',
+                                                          onPressed: () async {
+                                                            // Replace 'CreateAdScreen' with your actual screen name
+                                                            final updated =
+                                                                await Navigator
+                                                                    .push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                builder:
+                                                                    (context) =>
+                                                                        CreateAdScreen(
+                                                                  post:
+                                                                      post, // Pass the post data
+                                                                  isEdit: true,
                                                                 ),
-                                                              );
-                                                              if (updated == true) {
-                                                                _fetchPosts(); // Refresh after editing
-                                                              }
-                                                            },
-                                                          ),
-                                                    IconButton(
-                                                          icon: Icon(Icons.delete, color: Colors.red),
+                                                              ),
+                                                            );
+                                                            if (updated ==
+                                                                true) {
+                                                              _fetchPosts(); // Refresh after editing
+                                                            }
+                                                          },
+                                                        ),
+                                                        IconButton(
+                                                          icon: Icon(
+                                                              Icons.delete,
+                                                              color:
+                                                                  Colors.red),
                                                           tooltip: 'Delete',
                                                           onPressed: () async {
-                                                            final confirm = await showDialog<bool>(
+                                                            final confirm =
+                                                                await showDialog<
+                                                                    bool>(
                                                               context: context,
-                                                              builder: (context) => AlertDialog(
-                                                                title: Text('Delete Post'),
-                                                                content: Text('Are you sure you want to delete this post?'),
+                                                              builder:
+                                                                  (context) =>
+                                                                      AlertDialog(
+                                                                title: Text(
+                                                                    'Delete Post'),
+                                                                content: Text(
+                                                                    'Are you sure you want to delete this post?'),
                                                                 actions: [
                                                                   TextButton(
-                                                                    onPressed: () => Navigator.pop(context, false),
-                                                                    child: Text('Cancel'),
+                                                                    onPressed: () =>
+                                                                        Navigator.pop(
+                                                                            context,
+                                                                            false),
+                                                                    child: Text(
+                                                                        'Cancel'),
                                                                   ),
                                                                   TextButton(
-                                                                    onPressed: () => Navigator.pop(context, true),
-                                                                    child: Text('Delete'),
+                                                                    onPressed: () =>
+                                                                        Navigator.pop(
+                                                                            context,
+                                                                            true),
+                                                                    child: Text(
+                                                                        'Delete'),
                                                                   ),
                                                                 ],
                                                               ),
                                                             );
-                                                        if (confirm == true) {
-                                                              await Supabase.instance.client
+                                                            if (confirm ==
+                                                                true) {
+                                                              await Supabase
+                                                                  .instance
+                                                                  .client
                                                                   .from('post')
                                                                   .delete()
-                                                                  .eq('id', post['id']);
+                                                                  .eq(
+                                                                      'id',
+                                                                      post[
+                                                                          'id']);
                                                               _fetchPosts();
                                                             }
                                                           },
