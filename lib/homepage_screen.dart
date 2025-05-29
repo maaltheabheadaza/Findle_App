@@ -118,7 +118,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
         // Prioritize username from auth.currentUser metadata (Display Name)
-        final metaDisplayName = user.userMetadata?['display_name'] as String?;
+        final metaDisplayName = user.userMetadata?['username'] as String?;
 
         // Fetch other potential profile data from public.users
         final userDataResponse = await Supabase.instance.client
@@ -149,7 +149,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
       // In case of any error, still try to get username from auth.currentUser email as fallback
       final user = Supabase.instance.client.auth.currentUser;
        setState(() {
-         username = user?.userMetadata?['display_name'] as String? ?? user?.email?.split('@')[0] ?? 'User';
+         username = user?.userMetadata?['username'] as String? ?? user?.email?.split('@')[0] ?? 'User';
          profileImageUrl = null;
          isLoading = false;
        });
@@ -186,38 +186,47 @@ class _HomePageScreenState extends State<HomePageScreen> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              DrawerHeader(
-                decoration: BoxDecoration(
-                  color: primaryRed,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      onTap: uploadProfileImage,
-                      child: CircleAvatar(
-                        radius: 30,
-                        backgroundColor: white,
-                        backgroundImage: profileImageUrl != null
-                            ? NetworkImage(profileImageUrl!)
-                            : null,
-                        child: profileImageUrl == null
-                            ? const Icon(Icons.person, size: 30, color: Colors.grey)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      '@$username',
-                      style: GoogleFonts.poppins(
-                        color: white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+          DrawerHeader(
+              decoration: BoxDecoration(
+                color: primaryRed,
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: uploadProfileImage,
+                    child: CircleAvatar(
+                      radius: 30,
+                      backgroundColor: white,
+                      backgroundImage: profileImageUrl != null
+                          ? NetworkImage(profileImageUrl!)
+                          : null,
+                      child: profileImageUrl == null
+                          ? const Icon(Icons.person, size: 30, color: Colors.grey)
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '@$username',
+                    style: GoogleFonts.poppins(
+                      color: white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    Supabase.instance.client.auth.currentUser?.email ?? '',
+                    style: GoogleFonts.poppins(
+                      color: white.withOpacity(0.85),
+                      fontSize: 13,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
               _buildDrawerItem(
                  icon: Icons.post_add,
                   title: 'My Posts',
@@ -234,6 +243,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                     }
                   },
                 ),
+                
               _buildDrawerItem(
                 icon: Icons.favorite,
                 title: 'Favourites',
