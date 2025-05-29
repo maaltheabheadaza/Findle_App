@@ -24,7 +24,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
     'Electronics',
     'Clothing',
     'Documents',
-    'Personal Item'
+    'Personal Items'
   ];
   final List<String> _types = ['Lost', 'Found'];
 

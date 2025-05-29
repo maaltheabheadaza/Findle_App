@@ -198,7 +198,7 @@ class _CreateAdPageState extends State<CreateAdScreen> {
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
-                        items: ['Electronics', 'Clothing', 'Documents', 'Personal Item']
+                        items: ['Electronics', 'Clothing', 'Documents', 'Personal Items']
                             .map((cat) => DropdownMenuItem(
                                   value: cat,
                                   child: Text(cat),
