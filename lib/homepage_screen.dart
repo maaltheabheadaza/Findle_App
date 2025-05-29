@@ -219,13 +219,21 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 ),
               ),
               _buildDrawerItem(
-                icon: Icons.post_add,
-                title: 'Posts',
-                index: 0,
-                onTap: () {
-                  // TODO: Navigate to posts screen
-                },
-              ),
+                 icon: Icons.post_add,
+                  title: 'My Posts',
+                  index: 0,
+                  onTap: () {
+                    final user = Supabase.instance.client.auth.currentUser;
+                    if (user != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => LostAndFoundPage(userId: user.id), // Pass userId
+                        ),
+                      );
+                    }
+                  },
+                ),
               _buildDrawerItem(
                 icon: Icons.favorite,
                 title: 'Favourites',
@@ -401,7 +409,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => CreateAdPage()),
+                              MaterialPageRoute(builder: (context) => CreateAdScreen()),
                             );
                           },
                           icon: const Icon(Icons.campaign_rounded, color: AppColors.maroon),

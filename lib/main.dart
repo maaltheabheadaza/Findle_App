@@ -82,7 +82,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const LoginScreen(),
         '/dashboard': (context) => const DashboardPage(),
-        '/create-ad': (context) => CreateAdPage(),
+        '/create-ad': (context) => CreateAdScreen(),
         '/lost-and-found': (context) => LostAndFoundPage(),
       },
     );
