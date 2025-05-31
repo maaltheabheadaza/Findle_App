@@ -14,6 +14,7 @@ class LostAndFoundPage extends StatefulWidget {
 class _LostAndFoundPageState extends State<LostAndFoundPage> {
   List<Map<String, dynamic>> _posts = [];
   List<Map<String, dynamic>> _filteredPosts = [];
+  final Map<String, String> _usernames = {};
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCategory;
   String? _selectedType;
@@ -57,6 +58,35 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
       _filteredPosts = _posts;
       _isLoading = false;
     });
+
+    // Get all unique user IDs from posts
+    final userIds = _posts
+        .where((post) => post['user_id'] != null)
+        .map((post) => post['user_id'])
+        .toSet()
+        .toList();
+
+    if (userIds.isNotEmpty) {
+      try {
+        print('Fetching usernames for user IDs: $userIds');
+        final usersResponse = await Supabase.instance.client
+            .from('users')
+            .select('id, username')
+            .inFilter('id', userIds);
+
+        print('Users response: $usersResponse');
+        
+        final users = List<Map<String, dynamic>>.from(usersResponse);
+        setState(() {
+          for (var user in users) {
+            _usernames[user['id']] = user['username'];
+          }
+        });
+        print('Usernames map: $_usernames');
+            } catch (e) {
+        print('Error fetching usernames: $e');
+      }
+    }
   }
 
   void _filterPosts() {
@@ -101,7 +131,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
       lastDate: now,
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.light(
+          colorScheme: const ColorScheme.light(
             primary: AppColors.maroon,
             onPrimary: AppColors.yellow,
             surface: AppColors.white,
@@ -176,7 +206,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                         decoration: InputDecoration(
                           labelText: 'Search items...',
                           prefixIcon:
-                              Icon(Icons.search, color: AppColors.maroon),
+                              const Icon(Icons.search, color: AppColors.maroon),
                           filled: true,
                           fillColor: AppColors.white,
                           border: OutlineInputBorder(
@@ -261,7 +291,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           backgroundColor: AppColors.white,
-                          side: BorderSide(color: AppColors.gray),
+                          side: const BorderSide(color: AppColors.gray),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                           padding: const EdgeInsets.symmetric(
@@ -287,7 +317,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : _filteredPosts.isEmpty
-                          ? Center(
+                          ? const Center(
                               child: Text(
                                 'No items found.',
                                 style: TextStyle(
@@ -311,236 +341,262 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                                   margin:
                                       const EdgeInsets.symmetric(vertical: 10),
                                   elevation: 3,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      // Image
-                                      ClipRRect(
-                                        borderRadius: const BorderRadius.only(
-                                          topLeft: Radius.circular(16),
-                                          topRight: Radius.circular(16),
+                                  child: InkWell(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => PostDetailScreen(post: post),
                                         ),
-                                        child: post['image_url'] != null &&
-                                                post['image_url'] != ''
-                                            ? Image.network(
-                                                post['image_url'],
-                                                width: double.infinity,
-                                                height: 180,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (c, e, s) =>
-                                                    Container(
+                                      );
+                                    },
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // Image
+                                        ClipRRect(
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(16),
+                                            topRight: Radius.circular(16),
+                                          ),
+                                          child: post['image_url'] != null &&
+                                                  post['image_url'] != ''
+                                              ? Image.network(
+                                                  post['image_url'],
+                                                  width: double.infinity,
+                                                  height: 180,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (c, e, s) =>
+                                                      Container(
+                                                    height: 180,
+                                                    color: AppColors.lightGray,
+                                                    child: const Icon(Icons.image,
+                                                        color: AppColors.gray,
+                                                        size: 48),
+                                                  ),
+                                                )
+                                              : Container(
+                                                  width: double.infinity,
                                                   height: 180,
                                                   color: AppColors.lightGray,
-                                                  child: Icon(Icons.image,
-                                                      color: AppColors.gray,
+                                                  child: const Icon(Icons.inventory,
+                                                      color: AppColors.maroon,
                                                       size: 48),
                                                 ),
-                                              )
-                                            : Container(
-                                                width: double.infinity,
-                                                height: 180,
-                                                color: AppColors.lightGray,
-                                                child: Icon(Icons.inventory,
-                                                    color: AppColors.maroon,
-                                                    size: 48),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              // Title
+                                              Text(
+                                                post['title'] ?? '',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 18,
+                                                  color: AppColors.maroon,
+                                                ),
                                               ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.all(16),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            // Title
-                                            Text(
-                                              post['title'] ?? '',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 18,
-                                                color: AppColors.maroon,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 6),
-                                            // Description
-                                            Text(
-                                              post['description'] ?? '',
-                                              style:
-                                                  const TextStyle(fontSize: 15),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 10),
-                                            // ...existing code...
-                                            // Info row
-                                            SingleChildScrollView(
-                                              scrollDirection: Axis.horizontal,
-                                              child: Row(
+                                              const SizedBox(height: 4),
+                                              Row(
                                                 children: [
-                                                  Container(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 2),
-                                                    decoration: BoxDecoration(
-                                                      color:
-                                                          post['post_type'] ==
-                                                                  'Lost'
-                                                              ? AppColors
-                                                                  .paleMaroon
-                                                              : AppColors
-                                                                  .paleYellow,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              8),
+                                                  const Icon(
+                                                    Icons.person_outline,
+                                                    size: 16,
+                                                    color: AppColors.gray,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    _usernames[post['user_id']] ?? 'Anonymous',
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      color: AppColors.gray,
                                                     ),
-                                                    child: Text(
-                                                      post['post_type'] ?? '',
-                                                      style: TextStyle(
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 6),
+                                              // Description
+                                              Text(
+                                                post['description'] ?? '',
+                                                style:
+                                                    const TextStyle(fontSize: 15),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 10),
+                                              // Info row
+                                              SingleChildScrollView(
+                                                scrollDirection: Axis.horizontal,
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 2),
+                                                      decoration: BoxDecoration(
                                                         color:
                                                             post['post_type'] ==
                                                                     'Lost'
                                                                 ? AppColors
-                                                                    .white
+                                                                    .paleMaroon
                                                                 : AppColors
-                                                                    .maroon,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        fontSize: 12,
+                                                                    .paleYellow,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                                8),
+                                                      ),
+                                                      child: Text(
+                                                        post['post_type'] ?? '',
+                                                        style: TextStyle(
+                                                          color:
+                                                              post['post_type'] ==
+                                                                      'Lost'
+                                                                  ? AppColors
+                                                                      .white
+                                                                  : AppColors
+                                                                      .maroon,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          fontSize: 12,
+                                                        ),
                                                       ),
                                                     ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  ConstrainedBox(
-                                                    constraints:
-                                                        const BoxConstraints(
-                                                            maxWidth: 80),
-                                                    child: Text(
-                                                      post['category'] ?? '',
+                                                    const SizedBox(width: 8),
+                                                    ConstrainedBox(
+                                                      constraints:
+                                                          const BoxConstraints(
+                                                              maxWidth: 80),
+                                                      child: Text(
+                                                        post['category'] ?? '',
+                                                        style: const TextStyle(
+                                                          color: AppColors.gray,
+                                                          fontSize: 12,
+                                                        ),
+                                                        overflow:
+                                                            TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    const Icon(Icons.access_time,
+                                                        size: 14,
+                                                        color: AppColors.gray),
+                                                    Text(
+                                                      post['created_at'] != null
+                                                          ? post['created_at']
+                                                              .toString()
+                                                              .substring(0, 10)
+                                                          : '',
                                                       style: const TextStyle(
                                                         color: AppColors.gray,
                                                         fontSize: 12,
                                                       ),
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
                                                     ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Icon(Icons.access_time,
-                                                      size: 14,
-                                                      color: AppColors.gray),
-                                                  Text(
-                                                    post['created_at'] != null
-                                                        ? post['created_at']
-                                                            .toString()
-                                                            .substring(0, 10)
-                                                        : '',
-                                                    style: const TextStyle(
-                                                      color: AppColors.gray,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Icon(Icons.message,
-                                                      color: AppColors.maroon,
-                                                      size: 22),
-                                                  // Edit/Delete buttons for owner
-                                                  if (post['user_id'] ==
-                                                      currentUser?.id)
-                                                    Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment.end,
-                                                      children: [
-                                                        IconButton(
-                                                          icon: Icon(Icons.edit,
-                                                              color: AppColors
-                                                                  .maroon),
-                                                          tooltip: 'Edit',
-                                                          onPressed: () async {
-                                                            // Replace 'CreateAdScreen' with your actual screen name
-                                                            final updated =
-                                                                await Navigator
-                                                                    .push(
-                                                              context,
-                                                              MaterialPageRoute(
-                                                                builder:
-                                                                    (context) =>
-                                                                        CreateAdScreen(
-                                                                  post:
-                                                                      post, // Pass the post data
-                                                                  isEdit: true,
-                                                                ),
-                                                              ),
-                                                            );
-                                                            if (updated ==
-                                                                true) {
-                                                              _fetchPosts(); // Refresh after editing
-                                                            }
-                                                          },
-                                                        ),
-                                                        IconButton(
-                                                          icon: Icon(
-                                                              Icons.delete,
-                                                              color:
-                                                                  Colors.red),
-                                                          tooltip: 'Delete',
-                                                          onPressed: () async {
-                                                            final confirm =
-                                                                await showDialog<
-                                                                    bool>(
-                                                              context: context,
-                                                              builder:
-                                                                  (context) =>
-                                                                      AlertDialog(
-                                                                title: Text(
-                                                                    'Delete Post'),
-                                                                content: Text(
-                                                                    'Are you sure you want to delete this post?'),
-                                                                actions: [
-                                                                  TextButton(
-                                                                    onPressed: () =>
-                                                                        Navigator.pop(
-                                                                            context,
-                                                                            false),
-                                                                    child: Text(
-                                                                        'Cancel'),
-                                                                  ),
-                                                                  TextButton(
-                                                                    onPressed: () =>
-                                                                        Navigator.pop(
-                                                                            context,
-                                                                            true),
-                                                                    child: Text(
-                                                                        'Delete'),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            );
-                                                            if (confirm ==
-                                                                true) {
-                                                              await Supabase
-                                                                  .instance
-                                                                  .client
-                                                                  .from('post')
-                                                                  .delete()
-                                                                  .eq(
-                                                                      'id',
-                                                                      post[
-                                                                          'id']);
-                                                              _fetchPosts();
-                                                            }
-                                                          },
-                                                        ),
-                                                      ],
-                                                    ),
-                                                ],
+                                                    const SizedBox(width: 8),
+                                                    const Icon(Icons.message,
+                                                        color: AppColors.maroon,
+                                                        size: 22),
+                                                    // Edit/Delete buttons for owner
+                                                    if (post['user_id'] ==
+                                                        currentUser?.id)
+                                                      Row(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment.end,
+                                                        children: [
+                                                          IconButton(
+                                                            icon: const Icon(Icons.edit,
+                                                                color: AppColors
+                                                                    .maroon),
+                                                            tooltip: 'Edit',
+                                                            onPressed: () async {
+                                                              // Replace 'CreateAdScreen' with your actual screen name
+                                                              final updated =
+                                                                  await Navigator
+                                                                      .push(
+                                                                    context,
+                                                                    MaterialPageRoute(
+                                                                      builder:
+                                                                          (context) =>
+                                                                              CreateAdScreen(
+                                                                        post:
+                                                                            post, // Pass the post data
+                                                                        isEdit: true,
+                                                                      ),
+                                                                    ),
+                                                                  );
+                                                              if (updated ==
+                                                                  true) {
+                                                                _fetchPosts(); // Refresh after editing
+                                                              }
+                                                            },
+                                                          ),
+                                                          IconButton(
+                                                            icon: const Icon(
+                                                                Icons.delete,
+                                                                color:
+                                                                    Colors.red),
+                                                            tooltip: 'Delete',
+                                                            onPressed: () async {
+                                                              final confirm =
+                                                                  await showDialog<
+                                                                      bool>(
+                                                                    context: context,
+                                                                    builder:
+                                                                        (context) =>
+                                                                            AlertDialog(
+                                                                      title: const Text(
+                                                                          'Delete Post'),
+                                                                      content: const Text(
+                                                                          'Are you sure you want to delete this post?'),
+                                                                      actions: [
+                                                                        TextButton(
+                                                                          onPressed: () =>
+                                                                              Navigator.pop(
+                                                                                  context,
+                                                                                  false),
+                                                                          child: const Text(
+                                                                              'Cancel'),
+                                                                        ),
+                                                                        TextButton(
+                                                                          onPressed: () =>
+                                                                              Navigator.pop(
+                                                                                  context,
+                                                                                  true),
+                                                                          child: const Text(
+                                                                              'Delete'),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  );
+                                                              if (confirm ==
+                                                                  true) {
+                                                                await Supabase
+                                                                    .instance
+                                                                    .client
+                                                                    .from('post')
+                                                                    .delete()
+                                                                    .eq(
+                                                                        'id',
+                                                                        post[
+                                                                            'id']);
+                                                                _fetchPosts();
+                                                              }
+                                                            },
+                                                          ),
+                                                        ],
+                                                      ),
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                            // ...existing code...
-                                          ],
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 );
                               },
@@ -549,6 +605,138 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class PostDetailScreen extends StatelessWidget {
+  final Map<String, dynamic> post;
+
+  const PostDetailScreen({Key? key, required this.post}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.lightGray,
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        iconTheme: const IconThemeData(color: AppColors.maroon),
+        elevation: 1,
+        title: Text(
+          post['title'] ?? '',
+          style: const TextStyle(
+            color: AppColors.maroon,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            if (post['image_url'] != null && post['image_url'] != '')
+              Image.network(
+                post['image_url'],
+                width: double.infinity,
+                height: 300,
+                fit: BoxFit.cover,
+                errorBuilder: (c, e, s) => Container(
+                  height: 300,
+                  color: AppColors.lightGray,
+                  child: const Icon(Icons.image, color: AppColors.gray, size: 48),
+                ),
+              )
+            else
+              Container(
+                width: double.infinity,
+                height: 300,
+                color: AppColors.lightGray,
+                child: const Icon(Icons.inventory, color: AppColors.maroon, size: 48),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  Text(
+                    post['title'] ?? '',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                      color: AppColors.maroon,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Info row
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: post['post_type'] == 'Lost'
+                              ? AppColors.paleMaroon
+                              : AppColors.paleYellow,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          post['post_type'] ?? '',
+                          style: TextStyle(
+                            color: post['post_type'] == 'Lost'
+                                ? AppColors.white
+                                : AppColors.maroon,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        post['category'] ?? '',
+                        style: const TextStyle(
+                          color: AppColors.gray,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Icon(Icons.access_time, size: 16, color: AppColors.gray),
+                      const SizedBox(width: 4),
+                      Text(
+                        post['created_at'] != null
+                            ? post['created_at'].toString().substring(0, 10)
+                            : '',
+                        style: const TextStyle(
+                          color: AppColors.gray,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Description
+                  const Text(
+                    'Description',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: AppColors.maroon,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    post['description'] ?? '',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

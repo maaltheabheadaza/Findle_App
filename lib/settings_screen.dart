@@ -39,23 +39,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
-        // Get user data from the users table
+        // Prioritize username from auth.currentUser metadata (Display Name)
+        final metaDisplayName = user.userMetadata?['username'] as String?;
+
+        // Fetch other potential profile data from public.users
         final userDataResponse = await Supabase.instance.client
             .from('users')
-            .select('display_name, email')
+            .select()
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
         setState(() {
-          username = userDataResponse['display_name'] ?? user.email?.split('@')[0] ?? 'User';
+          // Use display name from metadata if available, otherwise fallback to email prefix
+          username = metaDisplayName ?? user.email?.split('@')[0] ?? 'User';
+
+          // Get profile image URL from public.users if available
+          profileImageUrl = userDataResponse?['profile_image_url'] as String?;
           email = user.email;
-          profileImageUrl = userDataResponse['profile_image_url'];
+          isLoading = false;
+        });
+      } else {
+        // If user is null, stop loading and set a default username
+        setState(() {
+          username = 'User';
+          profileImageUrl = null;
+          email = null;
           isLoading = false;
         });
       }
     } catch (e) {
       print('❌ Error fetching user data: $e');
+      // In case of any error, still try to get username from auth.currentUser email as fallback
+      final user = Supabase.instance.client.auth.currentUser;
       setState(() {
+        username = user?.userMetadata?['username'] as String? ?? user?.email?.split('@')[0] ?? 'User';
+        profileImageUrl = null;
+        email = user?.email;
         isLoading = false;
       });
     }
@@ -204,6 +223,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: primaryRed,
+        elevation: 0,
         title: Text(
           'Settings',
           style: GoogleFonts.poppins(
@@ -214,138 +234,176 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: primaryRed))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () {
-                      showModalBottomSheet(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return SafeArea(
-                            child: Wrap(
-                              children: <Widget>[
-                                ListTile(
-                                  leading: const Icon(Icons.photo_library),
-                                  title: Text(
-                                    'Choose from Gallery',
-                                    style: GoogleFonts.poppins(),
-                                  ),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    uploadProfileImage();
-                                  },
+          : Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    primaryRed.withOpacity(0.1),
+                    Colors.white,
+                  ],
+                ),
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 20),
+                    // Profile Section
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return SafeArea(
+                                    child: Wrap(
+                                      children: <Widget>[
+                                        ListTile(
+                                          leading: const Icon(Icons.photo_library),
+                                          title: Text(
+                                            'Choose from Gallery',
+                                            style: GoogleFonts.poppins(),
+                                          ),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            uploadProfileImage();
+                                          },
+                                        ),
+                                        ListTile(
+                                          leading: const Icon(Icons.camera_alt),
+                                          title: Text(
+                                            'Take a Photo',
+                                            style: GoogleFonts.poppins(),
+                                          ),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            takePhoto();
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                            child: Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 60,
+                                  backgroundColor: white,
+                                  backgroundImage: profileImageUrl != null
+                                      ? NetworkImage(profileImageUrl!)
+                                      : null,
+                                  child: profileImageUrl == null
+                                      ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                                      : null,
                                 ),
-                                ListTile(
-                                  leading: const Icon(Icons.camera_alt),
-                                  title: Text(
-                                    'Take a Photo',
-                                    style: GoogleFonts.poppins(),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: primaryRed,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
                                   ),
-                                  onTap: () {
-                                    Navigator.pop(context);
-                                    takePhoto();
-                                  },
                                 ),
                               ],
                             ),
-                          );
-                        },
-                      );
-                    },
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 60,
-                          backgroundColor: white,
-                          backgroundImage: profileImageUrl != null
-                              ? NetworkImage(profileImageUrl!)
-                              : null,
-                          child: profileImageUrl == null
-                              ? const Icon(Icons.person, size: 60, color: Colors.grey)
-                              : null,
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: primaryRed,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 20,
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            '@$username',
+                            style: GoogleFonts.poppins(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    username ?? 'User',
-                    style: GoogleFonts.poppins(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    email ?? '',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  // Dark Mode Toggle
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark 
-                          ? Colors.grey[800] 
-                          : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              themeProvider.themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
-                              color: themeProvider.themeMode == ThemeMode.dark ? Colors.amber : Colors.orange,
+                          const SizedBox(height: 8),
+                          Text(
+                            email ?? '',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              color: Colors.grey[600],
                             ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Dark Mode',
-                              style: GoogleFonts.poppins(
-                                fontSize: 16,
-                                color: Theme.of(context).brightness == Brightness.dark 
-                                    ? Colors.white 
-                                    : Colors.black87,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    // Dark Mode Toggle
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                themeProvider.themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
+                                color: themeProvider.themeMode == ThemeMode.dark ? Colors.amber : Colors.orange,
                               ),
-                            ),
-                          ],
-                        ),
-                        Switch(
-                          value: themeProvider.themeMode == ThemeMode.dark,
-                          onChanged: (bool value) {
-                            themeProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
-                          },
-                          activeColor: primaryRed,
-                        ),
-                      ],
+                              const SizedBox(width: 12),
+                              Text(
+                                'Dark Mode',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  color: Theme.of(context).brightness == Brightness.dark 
+                                      ? Colors.white 
+                                      : Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Switch(
+                            value: themeProvider.themeMode == ThemeMode.dark,
+                            onChanged: (bool value) {
+                              themeProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+                            },
+                            activeColor: primaryRed,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
     );
