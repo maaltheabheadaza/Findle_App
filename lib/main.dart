@@ -5,6 +5,8 @@ import 'create_ad.dart';
 import 'package:findle/homepage_screen.dart';
 import 'lost_and_found.dart';
 
+//diarang key
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(
