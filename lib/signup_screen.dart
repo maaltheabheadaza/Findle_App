@@ -187,6 +187,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       if (authResponse.user != null) {
         print('✅ User created with ID: ${authResponse.user!.id}');
+
+        final insertResponse = await _supabase
+          .from('users')
+          .insert({
+            'id': authResponse.user!.id, // This should match auth.users.id
+            'username': _usernameController.text.trim(), // User's input
+            'email': _emailController.text.trim(),
+          })
+          .select()
+          .single();
+
+      if (insertResponse == null) {
+        print('❌ Error inserting into users table: Insert returned null');
+        setState(() {
+          _formErrorMessage = 'Failed to save user profile. Please try again.';
+        });
+        return;
+      }
+
+        
         
         // Show success dialog
         if (mounted) {

@@ -53,42 +53,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.didChangeDependencies();
   }
 
-  Future<void> fetchUserData() async {
-    try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        final metaDisplayName = user.userMetadata?['username'] as String?;
-        final userDataResponse = await Supabase.instance.client
-            .from('users')
-            .select()
-            .eq('id', user.id)
-            .maybeSingle();
+ Future<void> fetchUserData() async {
+  try {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      // Fetch profile data from public.users
+      final userDataResponse = await Supabase.instance.client
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
 
-        setState(() {
-          username = metaDisplayName ?? user.email?.split('@')[0] ?? 'User';
-          profileImageUrl = userDataResponse?['profile_image_url'] as String?;
-          email = user.email;
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          username = 'User';
-          profileImageUrl = null;
-          email = null;
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('❌ Error fetching user data: $e');
-      final user = Supabase.instance.client.auth.currentUser;
       setState(() {
-        username = user?.userMetadata?['username'] as String? ?? user?.email?.split('@')[0] ?? 'User';
+        // Always use username from users table if available
+        username = userDataResponse?['username'] as String? ?? user.email?.split('@')[0] ?? 'User';
+        profileImageUrl = userDataResponse?['profile_image_url'] as String?;
+        email = user.email;
+        isLoading = false;
+      });
+    } else {
+      setState(() {
+        username = 'User';
         profileImageUrl = null;
-        email = user?.email;
+        email = null;
         isLoading = false;
       });
     }
+  } catch (e) {
+    print('❌ Error fetching user data: $e');
+    final user = Supabase.instance.client.auth.currentUser;
+    setState(() {
+      username = user?.email?.split('@')[0] ?? 'User';
+      profileImageUrl = null;
+      email = user?.email;
+      isLoading = false;
+    });
   }
+}
 
   Future<void> _handleImageSelection(ImageSource source) async {
     try {
@@ -193,13 +194,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           .from('users')
           .update({'username': _usernameController.text})
           .eq('id', user.id);
+          
 
       setState(() {
         username = _usernameController.text;
       });
 
       _usernameController.clear();
+      
       if (mounted) {
+        Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Username updated successfully!'),

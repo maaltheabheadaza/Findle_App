@@ -114,48 +114,39 @@ class _HomePageScreenState extends State<HomePageScreen> {
   }
 
   Future<void> fetchUserData() async {
-    try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        // Prioritize username from auth.currentUser metadata (Display Name)
-        final metaDisplayName = user.userMetadata?['username'] as String?;
+  try {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      // Fetch profile data from public.users
+      final userDataResponse = await Supabase.instance.client
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
 
-        // Fetch other potential profile data from public.users
-        final userDataResponse = await Supabase.instance.client
-            .from('users')
-            .select()
-            .eq('id', user.id)
-            .maybeSingle();
-
-        setState(() {
-          // Use display name from metadata if available, otherwise fallback to email prefix
-          username = metaDisplayName ?? user.email?.split('@')[0] ?? 'User';
-
-          // Get profile image URL from public.users if available
-          profileImageUrl = userDataResponse?['profile_image_url'] as String?;
-
-          isLoading = false;
-        });
-      } else {
-        // If user is null, stop loading and set a default username
-        setState(() {
-          username = 'User';
-          profileImageUrl = null;
-          isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('❌ Error fetching user data: $e');
-      // In case of any error, still try to get username from auth.currentUser email as fallback
-      final user = Supabase.instance.client.auth.currentUser;
-       setState(() {
-         username = user?.userMetadata?['username'] as String? ?? user?.email?.split('@')[0] ?? 'User';
-         profileImageUrl = null;
-         isLoading = false;
-       });
+      setState(() {
+        // Use username from users table if available, otherwise fallback to email prefix
+        username = userDataResponse?['username'] as String? ?? user.email?.split('@')[0] ?? 'User';
+        profileImageUrl = userDataResponse?['profile_image_url'] as String?;
+        isLoading = false;
+      });
+    } else {
+      setState(() {
+        username = 'User';
+        profileImageUrl = null;
+        isLoading = false;
+      });
     }
+  } catch (e) {
+    print('❌ Error fetching user data: $e');
+    final user = Supabase.instance.client.auth.currentUser;
+    setState(() {
+      username = user?.email?.split('@')[0] ?? 'User';
+      profileImageUrl = null;
+      isLoading = false;
+    });
   }
-
+}
   Future<void> uploadProfileImage() async {
     // TODO: Implement image upload functionality
   }
@@ -284,18 +275,21 @@ class _HomePageScreenState extends State<HomePageScreen> {
                   showAboutUsDialog(context);
                 },
               ),
-              _buildDrawerItem(
-                icon: Icons.settings,
-                title: 'Settings',
-                index: 5,
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
-                  );
-                },
-              ),
+             _buildDrawerItem(
+                  icon: Icons.settings,
+                  title: 'Settings',
+                  index: 5,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final updated = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                    );
+                    if (updated == true) {
+                      fetchUserData(); // Refresh username after returning from settings
+                    }
+                  },
+                ),
               const Divider(),
               _buildDrawerItem(
                 icon: Icons.logout,
