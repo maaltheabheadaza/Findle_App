@@ -5,7 +5,8 @@ import 'create_ad.dart';
 
 class LostAndFoundPage extends StatefulWidget {
   final String? userId;
-  const LostAndFoundPage({Key? key, this.userId}) : super(key: key);
+  final bool showMyPosts;
+  const LostAndFoundPage({Key? key, this.userId, this.showMyPosts = false}) : super(key: key);
 
   @override
   _LostAndFoundPageState createState() => _LostAndFoundPageState();
@@ -20,6 +21,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
   String? _selectedType;
   DateTime? _selectedDate;
   bool _isLoading = true;
+  bool _showMyPosts = false;
 
   final List<String> _categories = [
     'Electronics',
@@ -32,6 +34,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
   @override
   void initState() {
     super.initState();
+    _showMyPosts = widget.showMyPosts;
     _fetchPosts();
     _searchController.addListener(_filterPosts);
   }
@@ -40,12 +43,15 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
     setState(() => _isLoading = true);
 
     dynamic response;
-    if (widget.userId != null) {
-      response = await Supabase.instance.client
-          .from('post')
-          .select()
-          .eq('user_id', widget.userId!)
-          .order('created_at', ascending: false);
+    if (_showMyPosts) {
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      if (currentUser != null) {
+        response = await Supabase.instance.client
+            .from('post')
+            .select()
+            .eq('user_id', currentUser.id)
+            .order('created_at', ascending: false);
+      }
     } else {
       response = await Supabase.instance.client
           .from('post')
@@ -54,7 +60,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
     }
 
     setState(() {
-      _posts = List<Map<String, dynamic>>.from(response);
+      _posts = List<Map<String, dynamic>>.from(response ?? []);
       _filteredPosts = _posts;
       _isLoading = false;
     });
@@ -83,7 +89,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
           }
         });
         print('Usernames map: $_usernames');
-            } catch (e) {
+      } catch (e) {
         print('Error fetching usernames: $e');
       }
     }
@@ -168,20 +174,52 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
         backgroundColor: AppColors.white,
         iconTheme: const IconThemeData(color: AppColors.maroon),
         elevation: 1,
-        title: SizedBox(
-          width: 300,
-          child: Text(
-            widget.userId != null ? 'My Posts' : 'Lost & Found Newsfeed',
-            style: const TextStyle(
-              color: AppColors.maroon,
-              fontWeight: FontWeight.w600,
-              fontSize: 20,
-              overflow: TextOverflow.ellipsis,
-            ),
-            maxLines: 1,
-            textAlign: TextAlign.center,
-          ),
-        ),
+        title: widget.showMyPosts
+            ? const Text(
+                'My Posts',
+                style: TextStyle(
+                  color: AppColors.maroon,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ToggleButtons(
+                    isSelected: [!_showMyPosts, _showMyPosts],
+                    onPressed: (index) {
+                      setState(() {
+                        _showMyPosts = index == 1;
+                      });
+                      _fetchPosts();
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    selectedColor: AppColors.white,
+                    fillColor: AppColors.maroon,
+                    color: AppColors.maroon,
+                    constraints: const BoxConstraints(
+                      minWidth: 120,
+                      minHeight: 40,
+                    ),
+                    children: const [
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Newsfeed',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'My Posts',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

@@ -105,7 +105,7 @@ class _CreateAdPageState extends State<CreateAdScreen> {
             .eq('id', widget.post!['id']);
       } else {
         // CREATE
-        await Supabase.instance.client
+        final response = await Supabase.instance.client
             .from('post')
             .insert({
               'category': _category,
@@ -115,7 +115,47 @@ class _CreateAdPageState extends State<CreateAdScreen> {
               'user_id': user?.id,
               'image_url': imageUrl,
               'created_at': DateTime.now().toIso8601String(),
+            })
+            .select()
+            .single();
+
+        // Search for similar posts
+        final similarPosts = await Supabase.instance.client
+            .from('post')
+            .select('user_id, title, description')
+            .neq('user_id', user?.id ?? '')
+            .then((response) => response as List);
+
+        // Create notifications for users with similar posts
+        if (similarPosts.isNotEmpty) {
+          final newPostWords = '${_titleController.text} ${_descController.text}'
+              .toLowerCase()
+              .split(RegExp(r'\s+'))
+              .where((word) => word.length > 3) // Only consider words longer than 3 characters
+              .toSet();
+
+          final matchingPosts = similarPosts.where((post) {
+            final existingPostWords = '${post['title']} ${post['description']}'
+                .toLowerCase()
+                .split(RegExp(r'\s+'))
+                .where((word) => word.length > 3)
+                .toSet();
+
+            // Check if there are any common words between the posts
+            return newPostWords.any((word) => existingPostWords.contains(word));
+          }).toList();
+
+          // Create notifications for users with matching posts
+          for (final post in matchingPosts) {
+            await Supabase.instance.client.from('notifications').insert({
+              'user_id': post['user_id'],
+              'post_id': response['id'],
+              'message': 'Someone posted something similar to your post: "${post['title']}"',
+              'is_read': false,
+              'created_at': DateTime.now().toIso8601String(),
             });
+          }
+        }
       }
       setState(() => _isLoading = false);
       if (!mounted) return;
@@ -126,7 +166,7 @@ class _CreateAdPageState extends State<CreateAdScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
             widget.isEdit ? 'Success' : 'Success',
-            style: TextStyle(color: AppColors.maroon),
+            style: const TextStyle(color: AppColors.maroon),
           ),
           content: Text(widget.isEdit
               ? 'Post Updated Successfully!'
@@ -285,10 +325,10 @@ class _CreateAdPageState extends State<CreateAdScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                       child: Image.network(_existingImageUrl!, fit: BoxFit.cover, width: double.infinity),
                                     )
-                                  : Center(
+                                  : const Center(
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
-                                        children: const [
+                                        children: [
                                           Icon(Icons.add_a_photo, size: 38, color: AppColors.gray),
                                           SizedBox(height: 8),
                                           Text('Tap to add image', style: TextStyle(color: AppColors.gray)),

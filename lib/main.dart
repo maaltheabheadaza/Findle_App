@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'login_screen.dart';
 import 'create_ad.dart';
 import 'package:findle/homepage_screen.dart';
-import 'lost_and_found.dart';
+import 'package:findle/lost_and_found.dart';
+import 'package:findle/login_screen.dart';
+import 'package:findle/splash_screen.dart';
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
+import 'package:findle/settings_screen.dart';
 
 //diarang key
 
@@ -11,9 +15,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(
     url: 'https://gwwvtzumbxzuonwjubpk.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3d3Z0enVtYnh6dW9ud2p1YnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwODg5NjIsImV4cCI6MjA2MzY2NDk2Mn0.c7nn16RL_e6_ybeeY9DzNPGXdLDDL279JjIAR7sP15E',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3d3Z0enVtYnh6dW9ud2p1YnBrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwODg5NjIsImV4cCI6MjA2MzY2NDk2Mn0.c7nn16RL_e6_ybeeY9DzNPGXdLDDL279JjIAR7sP15E',
   );
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => ThemeProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class AppColors {
@@ -23,7 +33,7 @@ class AppColors {
   static const lightGray = Color(0xFFF5F5F5);
   static const darkGray = Color(0xFF4A4A4A);
   static const gray = Color(0xFF7E7E7E);
-  static const paleYellow = Color.fromARGB(255, 244, 216, 125); 
+  static const paleYellow = Color.fromARGB(255, 244, 216, 125);
   static const paleMaroon = Color.fromARGB(255, 138, 26, 26);
 }
 
@@ -32,9 +42,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp(
       title: 'Findle',
       debugShowCheckedModeBanner: false,
+      themeMode: themeProvider.themeMode,
       theme: ThemeData(
         colorScheme: const ColorScheme.light(
           primary: AppColors.maroon,
@@ -76,16 +89,20 @@ class MyApp extends StatelessWidget {
             ),
             elevation: 6,
             shadowColor: AppColors.gray.withOpacity(0.5),
-            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textStyle:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
       ),
+      darkTheme: ThemeData.dark(),
       initialRoute: '/',
       routes: {
-        '/': (context) => const LoginScreen(),
+        '/': (context) => const SplashScreen(),
+        '/login': (context) => const LoginScreen(),
         '/dashboard': (context) => const DashboardPage(),
-        '/create-ad': (context) => CreateAdScreen(),
-        '/lost-and-found': (context) => LostAndFoundPage(),
+        '/create-ad': (context) => const CreateAdScreen(),
+        '/lost-and-found': (context) => const LostAndFoundPage(),
+        '/settings': (context) => const SettingsScreen(),
       },
     );
   }
@@ -161,6 +178,7 @@ void showAboutUsDialog(BuildContext context) {
     ),
   );
 }
+
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
@@ -177,10 +195,10 @@ class DashboardPage extends StatelessWidget {
         elevation: 0,
         leading: Builder(
           builder: (context) => IconButton(
-              icon: const Icon(Icons.menu, color: AppColors.yellow),
-              iconSize: 34, 
-              onPressed: () => Scaffold.of(context).openDrawer(),
-            ),
+            icon: const Icon(Icons.menu, color: AppColors.yellow),
+            iconSize: 34,
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
         ),
         toolbarHeight: 70,
         title: Row(
@@ -202,32 +220,37 @@ class DashboardPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Hello,', style: TextStyle(color: AppColors.gray, fontSize: 22)),
-            Text(username, style: const TextStyle(color: AppColors.darkGray, fontSize: 28, fontWeight: FontWeight.bold)),
+            Text('Hello,',
+                style: TextStyle(color: AppColors.gray, fontSize: 22)),
+            Text(username,
+                style: const TextStyle(
+                    color: AppColors.darkGray,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
-      Expanded(
-        child: _DashboardCard(
-          color: AppColors.paleYellow,
-          icon: Icons.add_circle_outline,
-          title: 'Create an advert',
-          subtitle: 'Report if you find or lost\nan item.',
-          height: double.infinity,
-          onTap: () => Navigator.pushNamed(context, '/create-ad'),
-          textColor: AppColors.maroon,
-        ),
-      ),
-      const SizedBox(height: 16),
-      Expanded(
-        child: _DashboardCard(
-          color:  AppColors.paleMaroon,
-          icon: Icons.history,
-          title: 'Lost & found items',
-          subtitle: 'Go through the lost and\nfound items.',
-          height: double.infinity,
-          onTap: () => Navigator.pushNamed(context, '/lost-and-found'),
-          textColor: Colors.white,
-        ),
-      ),
+            Expanded(
+              child: _DashboardCard(
+                color: AppColors.paleYellow,
+                icon: Icons.add_circle_outline,
+                title: 'Create an advert',
+                subtitle: 'Report if you find or lost\nan item.',
+                height: double.infinity,
+                onTap: () => Navigator.pushNamed(context, '/create-ad'),
+                textColor: AppColors.maroon,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _DashboardCard(
+                color: AppColors.paleMaroon,
+                icon: Icons.history,
+                title: 'Lost & found items',
+                subtitle: 'Go through the lost and\nfound items.',
+                height: double.infinity,
+                onTap: () => Navigator.pushNamed(context, '/lost-and-found'),
+                textColor: Colors.white,
+              ),
+            ),
           ],
         ),
       ),
@@ -274,10 +297,10 @@ class _DashboardCard extends StatelessWidget {
           ],
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center, // vertical center
-          crossAxisAlignment: CrossAxisAlignment.start, // align icon and text to the left
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
-            // Icon in circular background
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -315,7 +338,6 @@ class _DashboardCard extends StatelessWidget {
   }
 }
 
-
 class _CustomDrawer extends StatelessWidget {
   final String username;
   final String email;
@@ -330,29 +352,40 @@ class _CustomDrawer extends StatelessWidget {
           Container(
             width: double.infinity,
             color: AppColors.yellow,
-            padding: const EdgeInsets.only(top: 48, left: 24, right: 24, bottom: 24),
+            padding:
+                const EdgeInsets.only(top: 48, left: 24, right: 24, bottom: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center, // <-- Ito ang mag-center vertically
+              mainAxisAlignment:
+                  MainAxisAlignment.center,
               children: [
                 const CircleAvatar(radius: 30, backgroundColor: Colors.white),
                 const SizedBox(height: 12),
-                Text(username, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(username,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 Text(email, style: const TextStyle(fontSize: 14)),
               ],
             ),
           ),
-          const ListTile(title: Text('Favourites'), leading: Icon(Icons.favorite_outline)),
-          const ListTile(title: Text('Messages'), leading: Icon(Icons.message_outlined)),
+          const ListTile(
+              title: Text('Favourites'), leading: Icon(Icons.favorite_outline)),
+          const ListTile(
+              title: Text('Messages'), leading: Icon(Icons.message_outlined)),
           ListTile(
             title: const Text('About Us'),
             leading: const Icon(Icons.info_outline),
             onTap: () {
-              Navigator.pop(context); // optional: close the drawer
+              Navigator.pop(context);
               showAboutUsDialog(context);
             },
           ),
-          const ListTile(title: Text('Settings'), leading: Icon(Icons.settings_outlined)),
+          ListTile(
+              title: const Text('Settings'),
+              leading: const Icon(Icons.settings_outlined),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/settings');
+              }),
           const Spacer(),
           ListTile(
             leading: const Icon(Icons.logout),
@@ -362,7 +395,8 @@ class _CustomDrawer extends StatelessWidget {
                 context: context,
                 builder: (BuildContext context) {
                   return Dialog(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
                     child: Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
@@ -372,7 +406,8 @@ class _CustomDrawer extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.logout, size: 50, color: AppColors.maroon),
+                          const Icon(Icons.logout,
+                              size: 50, color: AppColors.maroon),
                           const SizedBox(height: 15),
                           const Text(
                             'Are you sure you want to log out?',
@@ -392,7 +427,8 @@ class _CustomDrawer extends StatelessWidget {
                                   backgroundColor: AppColors.lightGray,
                                   foregroundColor: AppColors.darkGray,
                                 ),
-                                onPressed: () => Navigator.of(context).pop(false),
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
                                 child: const Text('Cancel'),
                               ),
                               ElevatedButton(
@@ -400,7 +436,8 @@ class _CustomDrawer extends StatelessWidget {
                                   backgroundColor: AppColors.maroon,
                                   foregroundColor: AppColors.yellow,
                                 ),
-                                onPressed: () => Navigator.of(context).pop(true),
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
                                 child: const Text('Logout'),
                               ),
                             ],
@@ -418,7 +455,6 @@ class _CustomDrawer extends StatelessWidget {
               }
             },
           ),
-
         ],
       ),
     );

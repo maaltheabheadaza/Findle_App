@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'login_screen.dart';
 import 'settings_screen.dart';
 import 'create_ad.dart';
 import 'lost_and_found.dart';
+import 'notifications_screen.dart';
 
 class AppColors {
   static const white = Color(0xFFF3F3F3);
@@ -33,10 +33,10 @@ void showAboutUsDialog(BuildContext context) {
           color: AppColors.maroon,
         ),
       ),
-      content: Column(
+      content: const Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Text(
             'Developed by:',
             style: TextStyle(
@@ -237,7 +237,10 @@ class _HomePageScreenState extends State<HomePageScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => LostAndFoundPage(userId: user.id), // Pass userId
+                          builder: (context) => LostAndFoundPage(
+                            userId: user.id,
+                            showMyPosts: true,
+                          ),
                         ),
                       );
                     }
@@ -261,9 +264,21 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 },
               ),
               _buildDrawerItem(
+                icon: Icons.notifications,
+                title: 'Notifications',
+                index: 3,
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                  );
+                },
+              ),
+              _buildDrawerItem(
                 icon: Icons.info,
                 title: 'About Us',
-                index: 3,
+                index: 4,
                 onTap: () {
                   Navigator.pop(context); // optional: close the drawer
                   showAboutUsDialog(context);
@@ -272,7 +287,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
               _buildDrawerItem(
                 icon: Icons.settings,
                 title: 'Settings',
-                index: 4,
+                index: 5,
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -285,7 +300,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
               _buildDrawerItem(
                 icon: Icons.logout,
                 title: 'Log out',
-                index: 5,
+                index: 6,
                 onTap: () async {
                   final shouldLogout = await showDialog<bool>(
                     context: context,
@@ -343,7 +358,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
 
                   if (shouldLogout ?? false) {
                     await Supabase.instance.client.auth.signOut();
-                    Navigator.pushReplacementNamed(context, '/');
+                    Navigator.pushReplacementNamed(context, '/login');
                   }
                 },
               ),
@@ -419,7 +434,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => CreateAdScreen()),
+                              MaterialPageRoute(builder: (context) => const CreateAdScreen()),
                             );
                           },
                           icon: const Icon(Icons.campaign_rounded, color: AppColors.maroon),
@@ -448,7 +463,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => LostAndFoundPage()),
+                              MaterialPageRoute(builder: (context) => const LostAndFoundPage()),
                             );
                           },
                           icon: const Icon(Icons.search_rounded, color: AppColors.yellow),

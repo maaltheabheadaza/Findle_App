@@ -7,9 +7,9 @@ class EmailConfirmationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryRed = const Color.fromRGBO(112, 1, 0, 1);
-    final Color white = const Color(0xFFF3F3F3);
-    final Color textColor = const Color.fromRGBO(51, 51, 51, 1);
+    const Color primaryRed = Color.fromRGBO(112, 1, 0, 1);
+    const Color white = Color(0xFFF3F3F3);
+    const Color textColor = Color.fromRGBO(51, 51, 51, 1);
 
     return Scaffold(
       backgroundColor: white,
@@ -19,7 +19,7 @@ class EmailConfirmationScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.check_circle_rounded, color: primaryRed, size: 64),
+              const Icon(Icons.check_circle_rounded, color: primaryRed, size: 64),
               const SizedBox(height: 24),
               Text(
                 'Your account is now verified! You can now login to your account.',

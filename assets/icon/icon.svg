@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background circle with gradient -->
+    <defs>
+        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#700100;stop-opacity:0.1"/>
+            <stop offset="100%" style="stop-color:#700100;stop-opacity:0.05"/>
+        </linearGradient>
+    </defs>
+    <circle cx="512" cy="512" r="512" fill="url(#bgGradient)"/>
+    
+    <!-- Main circular frame -->
+    <circle cx="512" cy="512" r="400" stroke="#700100" stroke-width="24" stroke-opacity="0.2"/>
+    
+    <!-- Decorative rings -->
+    <circle cx="512" cy="512" r="320" stroke="#F6C401" stroke-width="16" stroke-opacity="0.3"/>
+    <circle cx="512" cy="512" r="240" stroke="#700100" stroke-width="12" stroke-opacity="0.2"/>
+    
+    <!-- Central magnifying glass -->
+    <path d="M512 384C423.2 384 352 455.2 352 544C352 632.8 423.2 704 512 704C600.8 704 672 632.8 672 544C672 455.2 600.8 384 512 384ZM512 448C545.2 448 576 478.8 576 512C576 545.2 545.2 576 512 576C478.8 576 448 545.2 448 512C448 478.8 478.8 448 512 448Z" 
+          fill="#700100"/>
+    
+    <!-- Magnifying glass handle -->
+    <path d="M672 704L832 864" stroke="#700100" stroke-width="48" stroke-linecap="round"/>
+    
+    <!-- Found item indicator -->
+    <circle cx="512" cy="512" r="32" fill="#F6C401"/>
+    
+    <!-- Subtle glow effect -->
+    <circle cx="512" cy="512" r="36" fill="none" stroke="#F6C401" stroke-width="2" stroke-opacity="0.3"/>
+</svg> 

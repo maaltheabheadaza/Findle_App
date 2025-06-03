@@ -3,8 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:provider/provider.dart'; // Import provider package
-import 'theme_provider.dart'; // Import ThemeProvider
+import 'package:provider/provider.dart';
+import 'theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,11 +23,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? email;
   String? profileImageUrl;
   bool isLoading = true;
+  bool isUploadingImage = false;
+  bool showCurrentPassword = false;
+  bool showNewPassword = false;
+  bool showConfirmPassword = false;
+
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     fetchUserData();
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -39,10 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
-        // Prioritize username from auth.currentUser metadata (Display Name)
         final metaDisplayName = user.userMetadata?['username'] as String?;
-
-        // Fetch other potential profile data from public.users
         final userDataResponse = await Supabase.instance.client
             .from('users')
             .select()
@@ -50,16 +65,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             .maybeSingle();
 
         setState(() {
-          // Use display name from metadata if available, otherwise fallback to email prefix
           username = metaDisplayName ?? user.email?.split('@')[0] ?? 'User';
-
-          // Get profile image URL from public.users if available
           profileImageUrl = userDataResponse?['profile_image_url'] as String?;
           email = user.email;
           isLoading = false;
         });
       } else {
-        // If user is null, stop loading and set a default username
         setState(() {
           username = 'User';
           profileImageUrl = null;
@@ -69,7 +80,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       print('❌ Error fetching user data: $e');
-      // In case of any error, still try to get username from auth.currentUser email as fallback
       final user = Supabase.instance.client.auth.currentUser;
       setState(() {
         username = user?.userMetadata?['username'] as String? ?? user?.email?.split('@')[0] ?? 'User';
@@ -80,11 +90,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> uploadProfileImage() async {
+  Future<void> _handleImageSelection(ImageSource source) async {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         maxWidth: 1024,
         maxHeight: 1024,
         imageQuality: 85,
@@ -93,17 +103,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (image == null) return;
 
       final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        _showErrorSnackBar('User not found. Please sign in again.');
+        return;
+      }
 
       setState(() {
-        isLoading = true;
+        isUploadingImage = true;
       });
 
-      // Upload image to Supabase Storage
       final String fileExt = image.path.split('.').last;
       final String fileName = '${user.id}/profile.$fileExt';
       
-      // Upload the file
       await Supabase.instance.client.storage
           .from('profiles')
           .upload(fileName, File(image.path), fileOptions: const FileOptions(
@@ -111,12 +122,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             upsert: true,
           ));
 
-      // Get the public URL
       final String imageUrl = Supabase.instance.client.storage
           .from('profiles')
           .getPublicUrl(fileName);
 
-      // Update user profile in database
       await Supabase.instance.client
           .from('users')
           .update({'profile_image_url': imageUrl})
@@ -124,206 +133,393 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       setState(() {
         profileImageUrl = imageUrl;
-        isLoading = false;
+        isUploadingImage = false;
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile image updated successfully!')),
+          const SnackBar(
+            content: Text('Profile image updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       print('❌ Error uploading profile image: $e');
       setState(() {
-        isLoading = false;
+        isUploadingImage = false;
       });
+      _showErrorSnackBar('Failed to update profile image. Please try again.');
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).size.height - 100,
+            left: 20,
+            right: 20,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _updateUsername() async {
+    if (_usernameController.text.isEmpty) {
+      _showErrorSnackBar('Username cannot be empty');
+      return;
+    }
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        _showErrorSnackBar('User not found. Please sign in again.');
+        return;
+      }
+
+      await Supabase.instance.client.auth.updateUser(
+        UserAttributes(
+          data: {'username': _usernameController.text},
+        ),
+      );
+
+      await Supabase.instance.client
+          .from('users')
+          .update({'username': _usernameController.text})
+          .eq('id', user.id);
+
+      setState(() {
+        username = _usernameController.text;
+      });
+
+      _usernameController.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update profile image. Please try again.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: Text('Username updated successfully!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).size.height - 100,
+              left: 20,
+              right: 20,
+            ),
           ),
         );
+      }
+    } catch (e) {
+      print('❌ Error updating username: $e');
+      _showErrorSnackBar('Failed to update username. Please try again.');
+    }
+  }
+
+  Future<void> _updatePassword() async {
+    if (_currentPasswordController.text.isEmpty ||
+        _newPasswordController.text.isEmpty ||
+        _confirmPasswordController.text.isEmpty) {
+      _showErrorSnackBar('Please fill in all password fields');
+      return;
+    }
+
+    if (_newPasswordController.text != _confirmPasswordController.text) {
+      _showErrorSnackBar('New passwords do not match');
+      return;
+    }
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        _showErrorSnackBar('User not found. Please sign in again.');
+        return;
+      }
+
+      // Update password directly
+      await Supabase.instance.client.auth.updateUser(
+        UserAttributes(
+          password: _newPasswordController.text,
+        ),
+      );
+
+      _currentPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Password updated successfully!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(context).size.height - 100,
+              left: 20,
+              right: 20,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error updating password: $e');
+      if (e.toString().contains('Invalid login credentials')) {
+        _showErrorSnackBar('Current password is incorrect');
+      } else {
+        _showErrorSnackBar('Failed to update password. Please try again.');
       }
     }
   }
 
-  Future<void> takePhoto() async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-      
-      if (image == null) return;
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Text(
+        title,
+        style: GoogleFonts.poppins(
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
+      ),
+    );
+  }
 
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) return;
-
-      setState(() {
-        isLoading = true;
-      });
-
-      // Upload image to Supabase Storage
-      final String fileExt = image.path.split('.').last;
-      final String fileName = '${user.id}/profile.$fileExt';
-      
-      // Upload the file
-      await Supabase.instance.client.storage
-          .from('profiles')
-          .upload(fileName, File(image.path), fileOptions: const FileOptions(
-            cacheControl: '3600',
-            upsert: true,
-          ));
-
-      // Get the public URL
-      final String imageUrl = Supabase.instance.client.storage
-          .from('profiles')
-          .getPublicUrl(fileName);
-
-      // Update user profile in database
-      await Supabase.instance.client
-          .from('users')
-          .update({'profile_image_url': imageUrl})
-          .eq('id', user.id);
-
-      setState(() {
-        profileImageUrl = imageUrl;
-        isLoading = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile image updated successfully!')),
-        );
-      }
-    } catch (e) {
-      print('❌ Error uploading profile image: $e');
-      setState(() {
-        isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update profile image. Please try again.'),
-            backgroundColor: Colors.red,
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hintText,
+    bool isPassword = false,
+    bool? showPassword,
+    VoidCallback? onTogglePassword,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword && (showPassword == null || !showPassword),
+        style: GoogleFonts.poppins(
+          color: textColor,
+          fontSize: 16,
+        ),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: GoogleFonts.poppins(
+            color: Colors.grey[600],
+            fontSize: 16,
           ),
-        );
-      }
-    }
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey[300]!),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: primaryRed, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    showPassword == true
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                    color: Colors.grey[600],
+                  ),
+                  onPressed: onTogglePassword,
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildElevatedButton({
+    required String text,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      width: double.infinity,
+      height: 50,
+      margin: const EdgeInsets.only(top: 8),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: primaryRed,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: Text(
+          text,
+          style: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context); // Access ThemeProvider
-
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: primaryRed,
         elevation: 0,
         title: Text(
           'Settings',
           style: GoogleFonts.poppins(
-            color: white,
-            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
           ),
         ),
+        centerTitle: true,
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator(color: primaryRed))
-          : Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    primaryRed.withOpacity(0.1),
-                    Colors.white,
-                  ],
-                ),
+          ? Center(
+              child: CircularProgressIndicator(
+                color: primaryRed,
+                strokeWidth: 3,
               ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
-                    // Profile Section
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
-                            spreadRadius: 1,
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              showModalBottomSheet(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return SafeArea(
-                                    child: Wrap(
-                                      children: <Widget>[
-                                        ListTile(
-                                          leading: const Icon(Icons.photo_library),
-                                          title: Text(
-                                            'Choose from Gallery',
-                                            style: GoogleFonts.poppins(),
-                                          ),
-                                          onTap: () {
-                                            Navigator.pop(context);
-                                            uploadProfileImage();
-                                          },
-                                        ),
-                                        ListTile(
-                                          leading: const Icon(Icons.camera_alt),
-                                          title: Text(
-                                            'Take a Photo',
-                                            style: GoogleFonts.poppins(),
-                                          ),
-                                          onTap: () {
-                                            Navigator.pop(context);
-                                            takePhoto();
-                                          },
-                                        ),
-                                      ],
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Profile Section
+                  Center(
+                    child: Column(
+                      children: [
+                        GestureDetector(
+                          onTap: isUploadingImage ? null : () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: Colors.white,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(20),
+                                ),
+                              ),
+                              builder: (BuildContext context) {
+                                return Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      width: 40,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
                                     ),
-                                  );
-                                },
-                              );
-                            },
-                            child: Stack(
-                              children: [
-                                CircleAvatar(
+                                    const SizedBox(height: 20),
+                                    ListTile(
+                                      leading: Icon(Icons.photo_library,
+                                          color: primaryRed),
+                                      title: Text(
+                                        'Choose from Gallery',
+                                        style: GoogleFonts.poppins(
+                                          color: textColor,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        _handleImageSelection(ImageSource.gallery);
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: Icon(Icons.camera_alt,
+                                          color: primaryRed),
+                                      title: Text(
+                                        'Take a Photo',
+                                        style: GoogleFonts.poppins(
+                                          color: textColor,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        _handleImageSelection(ImageSource.camera);
+                                      },
+                                    ),
+                                    const SizedBox(height: 20),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          child: Stack(
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: CircleAvatar(
                                   radius: 60,
-                                  backgroundColor: white,
+                                  backgroundColor: Colors.white,
                                   backgroundImage: profileImageUrl != null
                                       ? NetworkImage(profileImageUrl!)
                                       : null,
                                   child: profileImageUrl == null
-                                      ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                                      ? Icon(Icons.person,
+                                          size: 60, color: Colors.grey[400])
                                       : null,
                                 ),
+                              ),
+                              if (isUploadingImage)
+                                Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: CircularProgressIndicator(
+                                    color: primaryRed,
+                                    strokeWidth: 3,
+                                  ),
+                                )
+                              else
                                 Positioned(
                                   bottom: 0,
                                   right: 0,
                                   child: Container(
-                                    padding: const EdgeInsets.all(4),
+                                    padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
                                       color: primaryRed,
                                       shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: primaryRed.withOpacity(0.3),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
                                     ),
                                     child: const Icon(
                                       Icons.camera_alt,
@@ -332,78 +528,120 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            '@$username',
-                            style: GoogleFonts.poppins(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            email ?? '',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    // Dark Mode Toggle
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
-                            spreadRadius: 1,
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                themeProvider.themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
-                                color: themeProvider.themeMode == ThemeMode.dark ? Colors.amber : Colors.orange,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Dark Mode',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  color: Theme.of(context).brightness == Brightness.dark 
-                                      ? Colors.white 
-                                      : Colors.black87,
-                                ),
-                              ),
                             ],
                           ),
-                          Switch(
-                            value: themeProvider.themeMode == ThemeMode.dark,
-                            onChanged: (bool value) {
-                              themeProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
-                            },
-                            activeColor: primaryRed,
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          '@$username',
+                          style: GoogleFonts.poppins(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          email ?? '',
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 40),
+                  // Username Change Section
+                  _buildSectionTitle('Change Username'),
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTextField(
+                          controller: _usernameController,
+                          hintText: 'New username',
+                        ),
+                        _buildElevatedButton(
+                          text: 'Update Username',
+                          onPressed: _updateUsername,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // Password Change Section
+                  _buildSectionTitle('Change Password'),
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTextField(
+                          controller: _currentPasswordController,
+                          hintText: 'Current password',
+                          isPassword: true,
+                          showPassword: showCurrentPassword,
+                          onTogglePassword: () {
+                            setState(() {
+                              showCurrentPassword = !showCurrentPassword;
+                            });
+                          },
+                        ),
+                        _buildTextField(
+                          controller: _newPasswordController,
+                          hintText: 'New password',
+                          isPassword: true,
+                          showPassword: showNewPassword,
+                          onTogglePassword: () {
+                            setState(() {
+                              showNewPassword = !showNewPassword;
+                            });
+                          },
+                        ),
+                        _buildTextField(
+                          controller: _confirmPasswordController,
+                          hintText: 'Confirm new password',
+                          isPassword: true,
+                          showPassword: showConfirmPassword,
+                          onTogglePassword: () {
+                            setState(() {
+                              showConfirmPassword = !showConfirmPassword;
+                            });
+                          },
+                        ),
+                        _buildElevatedButton(
+                          text: 'Update Password',
+                          onPressed: _updatePassword,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                ],
               ),
             ),
     );

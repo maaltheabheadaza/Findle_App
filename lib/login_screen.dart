@@ -210,7 +210,7 @@ void _clearErrorMessage() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: white,
+      backgroundColor: Colors.white,
       body: Container(
         color: const Color(0xFFF0F1F5),
         child: SafeArea(
