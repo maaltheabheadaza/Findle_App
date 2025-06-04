@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'homepage_screen.dart';
 import 'create_ad.dart';
+import 'message_screen.dart';
 
 class LostAndFoundPage extends StatefulWidget {
   final String? userId;
@@ -534,41 +535,115 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                                                         fontSize: 12,
                                                       ),
                                                     ),
-                                                    const SizedBox(width: 8),
-                                                    const Icon(Icons.message,
-                                                        color: AppColors.maroon,
-                                                        size: 22),
-                                                    // Edit/Delete buttons for owner
-                                                    if (post['user_id'] ==
-                                                        currentUser?.id)
-                                                      Row(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment.end,
-                                                        children: [
-                                                          IconButton(
-                                                            icon: const Icon(Icons.edit,
-                                                                color: AppColors
-                                                                    .maroon),
-                                                            tooltip: 'Edit',
-                                                            onPressed: () async {
-                                                              // Replace 'CreateAdScreen' with your actual screen name
-                                                              final updated =
-                                                                  await Navigator
-                                                                      .push(
+
+                                                    IconButton(
+                                                      icon: const Icon(Icons.message, color: Colors.deepOrange),
+                                                      tooltip: 'Message',
+                                                      onPressed: () async {
+                                                        final receiverId = post['user_id'];
+                                                        final receiverName = _usernames[receiverId] ?? 'this user';
+
+
+                                                        if (currentUser == null || receiverId == currentUser.id) {
+                                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text("You can't message yourself."),
+                                                            ),
+                                                          );
+                                                          return;
+                                                        }
+
+                                                        showDialog(
+                                                          context: context,
+                                                          builder: (_) => AlertDialog(
+                                                            backgroundColor: Colors.white,
+                                                            shape: RoundedRectangleBorder(
+                                                              borderRadius: BorderRadius.circular(20),
+                                                            ),
+                                                            title: Row(
+                                                              children: const [
+                                                                Icon(Icons.chat_bubble_outline, color: Color(0xFF700100)),
+                                                                SizedBox(width: 8),
+                                                                Text(
+                                                                  "Start Conversation",
+                                                                  style: TextStyle(
+                                                                    color: Color(0xFF700100),
+                                                                    fontWeight: FontWeight.bold,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            content: Column(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                const Divider(thickness: 1),
+                                                                const SizedBox(height: 8),
+                                                                Text(
+                                                                  "Start a conversation with this user?",
+                                                                  textAlign: TextAlign.center,
+                                                                  style: const TextStyle(
+                                                                    fontSize: 16,
+                                                                    color: Colors.black87,
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(height: 20),
+                                                              ],
+                                                            ),
+                                                            actionsAlignment: MainAxisAlignment.center,
+                                                            actions: [
+                                                              ElevatedButton.icon(
+                                                                icon: const Icon(Icons.message),
+                                                                label: const Text("Proceed"),
+                                                                style: ElevatedButton.styleFrom(
+                                                                  backgroundColor: Color(0xFFF6C401), // Yellow
+                                                                  foregroundColor: Colors.black,
+                                                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                                                ),
+                                                                onPressed: () {
+                                                                  Navigator.push(
                                                                     context,
                                                                     MaterialPageRoute(
-                                                                      builder:
-                                                                          (context) =>
-                                                                              CreateAdScreen(
-                                                                        post:
-                                                                            post, // Pass the post data
-                                                                        isEdit: true,
+                                                                      builder: (_) => MessageScreen(
+                                                                        receiverId: receiverId,
+                                                                        receiverUsername: receiverName, 
                                                                       ),
                                                                     ),
                                                                   );
-                                                              if (updated ==
-                                                                  true) {
-                                                                _fetchPosts(); // Refresh after editing
+                                                                },
+                                                              ),
+                                                              TextButton(
+                                                                child: const Text(
+                                                                  "Cancel",
+                                                                  style: TextStyle(color: Color(0xFF700100)),
+                                                                ),
+                                                                onPressed: () => Navigator.of(context).pop(),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
+                                                    // ✅ Owner-only buttons
+                                                    if (post['user_id'] == currentUser?.id)
+                                                      Row(
+                                                        mainAxisAlignment: MainAxisAlignment.end,
+                                                        children: [
+                                                          IconButton(
+                                                            icon: const Icon(Icons.edit, color: AppColors.maroon),
+                                                            tooltip: 'Edit',
+                                                            onPressed: () async {
+                                                              final updated = await Navigator.push(
+                                                                context,
+                                                                MaterialPageRoute(
+                                                                  builder: (context) => CreateAdScreen(
+                                                                    post: post,
+                                                                    isEdit: true,
+                                                                  ),
+                                                                ),
+                                                              );
+                                                              if (updated == true) {
+                                                                _fetchPosts();
                                                               }
                                                             },
                                                           ),
@@ -776,7 +851,7 @@ class PostDetailScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      ), // <- ✅ this was missing
+    ); // <- ✅ this was missing
   }
 }
