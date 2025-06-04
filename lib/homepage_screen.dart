@@ -5,6 +5,7 @@ import 'settings_screen.dart';
 import 'create_ad.dart';
 import 'lost_and_found.dart';
 import 'notifications_screen.dart';
+import 'chat_list_screen.dart';
 
 class AppColors {
   static const white = Color(0xFFF3F3F3);
@@ -251,7 +252,11 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 title: 'Messages',
                 index: 2,
                 onTap: () {
-                  // TODO: Navigate to messages screen
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ChatListScreen()),
+                  );
                 },
               ),
               _buildDrawerItem(
