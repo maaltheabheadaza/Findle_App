@@ -16,6 +16,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _allChats = [];
   List<Map<String, dynamic>> _filteredChats = [];
+  bool _isLoading = true; // Added loading flag
 
   @override
   void initState() {
@@ -25,6 +26,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Future<void> _loadConversations() async {
+    setState(() => _isLoading = true); // Start loading
+
     final messages = await supabase
         .from('messages')
         .select('id, sender_id, receiver_id, message, timestamp, seen')
@@ -64,6 +67,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     setState(() {
       _allChats = chatList;
       _filteredChats = chatList;
+      _isLoading = false; // Done loading
     });
   }
 
@@ -139,121 +143,126 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
         ),
       ),
-      body: _allChats.isEmpty
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _filteredChats.isEmpty
-              ? const Center(child: Text('No results found.'))
-              : ListView.builder(
-                  itemCount: _filteredChats.length,
-                  itemBuilder: (context, index) {
-                    final chat = _filteredChats[index];
-                    String decryptedLastMessage;
-                    try {
-                      decryptedLastMessage =
-                          EncryptionHelper.decryptText(chat['message']);
-                    } catch (_) {
-                      decryptedLastMessage = '[Encrypted message]';
-                    }
+          : _allChats.isEmpty
+              ? const Center(child: Text('No chats yet.'))
+              : _filteredChats.isEmpty
+                  ? const Center(child: Text('No results found.'))
+                  : ListView.builder(
+                      itemCount: _filteredChats.length,
+                      itemBuilder: (context, index) {
+                        final chat = _filteredChats[index];
+                        String decryptedLastMessage;
+                        try {
+                          decryptedLastMessage =
+                              EncryptionHelper.decryptText(chat['message']);
+                        } catch (_) {
+                          decryptedLastMessage = '[Encrypted message]';
+                        }
 
-                    final DateTime timestamp =
-                        DateTime.parse(chat['timestamp']);
-                    final bool isUnread = chat['sender_id'] != currentUserId &&
-                        (chat['seen'] == false);
+                        final DateTime timestamp =
+                            DateTime.parse(chat['timestamp']);
+                        final bool isUnread =
+                            chat['sender_id'] != currentUserId &&
+                                (chat['seen'] == false);
 
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.grey.shade200,
-                        backgroundImage: chat['profile_image_url'] != null
-                            ? NetworkImage(chat['profile_image_url'])
-                            : null,
-                        child: chat['profile_image_url'] == null
-                            ? const Icon(Icons.person, color: Colors.grey)
-                            : null,
-                      ),
-                      title: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '@${chat['username']}',
-                              style: TextStyle(
-                                fontWeight: isUnread
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.grey.shade200,
+                            backgroundImage: chat['profile_image_url'] != null
+                                ? NetworkImage(chat['profile_image_url'])
+                                : null,
+                            child: chat['profile_image_url'] == null
+                                ? const Icon(Icons.person, color: Colors.grey)
+                                : null,
+                          ),
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '@${chat['username']}',
+                                  style: TextStyle(
+                                    fontWeight: isUnread
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          Text(
-                            _formatTimestamp(timestamp),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      subtitle: Text(
-                        decryptedLastMessage,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: isUnread
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                      onTap: () async {
-                        await supabase
-                            .from('messages')
-                            .update({'seen': true})
-                            .match({
-                              'sender_id': chat['other_user_id'],
-                              'receiver_id': currentUserId,
-                            });
-
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => MessageScreen(
-                              receiverId: chat['other_user_id'],
-                              receiverUsername: chat['username'],
-                            ),
-                          ),
-                        );
-
-                        _loadConversations();
-                      },
-                      onLongPress: () async {
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Delete Conversation?'),
-                            content: Text(
-                              'This will also delete it for @${chat['username']}',
-                              style: TextStyle(
-                                  fontSize: 14, color: Colors.grey[700]),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text('Delete'),
+                              Text(
+                                _formatTimestamp(timestamp),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
                               ),
                             ],
                           ),
-                        );
+                          subtitle: Text(
+                            decryptedLastMessage,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: isUnread
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          onTap: () async {
+                            await supabase
+                                .from('messages')
+                                .update({'seen': true})
+                                .match({
+                                  'sender_id': chat['other_user_id'],
+                                  'receiver_id': currentUserId,
+                                });
 
-                        if (confirm == true) {
-                          await _deleteConversation(chat['other_user_id']);
-                          _loadConversations();
-                        }
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => MessageScreen(
+                                  receiverId: chat['other_user_id'],
+                                  receiverUsername: chat['username'],
+                                ),
+                              ),
+                            );
+
+                            _loadConversations();
+                          },
+                          onLongPress: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Delete Conversation?'),
+                                content: Text(
+                                  'This will also delete it for @${chat['username']}',
+                                  style: TextStyle(
+                                      fontSize: 14, color: Colors.grey[700]),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirm == true) {
+                              await _deleteConversation(chat['other_user_id']);
+                              _loadConversations();
+                            }
+                          },
+                        );
                       },
-                    );
-                  },
-                ),
+                    ),
     );
   }
 }
