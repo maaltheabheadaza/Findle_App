@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:dio/dio.dart';
+import 'dart:io';
 import 'homepage_screen.dart';
 import 'create_ad.dart';
 import 'message_screen.dart';
@@ -385,7 +389,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => PostDetailScreen(post: post),
+                                          builder: (context) => PostDetailScreen(post: post, usernames: _usernames),
                                         ),
                                       );
                                     },
@@ -726,11 +730,47 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
 
 class PostDetailScreen extends StatelessWidget {
   final Map<String, dynamic> post;
+  final Map<String, String> usernames;
 
-  const PostDetailScreen({Key? key, required this.post}) : super(key: key);
+  const PostDetailScreen({Key? key, required this.post, required this.usernames}) : super(key: key);
+
+  void _showImageDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            children: [
+              // Full screen image
+              InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              // Close button
+              Positioned(
+                top: 40,
+                right: 20,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = Supabase.instance.client.auth.currentUser;
     return Scaffold(
       backgroundColor: AppColors.lightGray,
       appBar: AppBar(
@@ -751,15 +791,38 @@ class PostDetailScreen extends StatelessWidget {
           children: [
             // Image
             if (post['image_url'] != null && post['image_url'] != '')
-              Image.network(
-                post['image_url'],
-                width: double.infinity,
-                height: 300,
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, s) => Container(
-                  height: 300,
-                  color: AppColors.lightGray,
-                  child: const Icon(Icons.image, color: AppColors.gray, size: 48),
+              GestureDetector(
+                onTap: () => _showImageDialog(context, post['image_url']),
+                child: Stack(
+                  children: [
+                    Image.network(
+                      post['image_url'],
+                      width: double.infinity,
+                      height: 300,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) => Container(
+                        height: 300,
+                        color: AppColors.lightGray,
+                        child: const Icon(Icons.image, color: AppColors.gray, size: 48),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(
+                          Icons.fullscreen,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               )
             else
@@ -782,6 +845,45 @@ class PostDetailScreen extends StatelessWidget {
                       fontSize: 24,
                       color: AppColors.maroon,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Username and Message Button
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.person_outline,
+                        size: 16,
+                        color: AppColors.gray,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        usernames[post['user_id']] ?? 'Anonymous',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.gray,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (currentUser != null && post['user_id'] != currentUser.id)
+                        IconButton(
+                          icon: const Icon(Icons.message, color: Colors.deepOrange),
+                          tooltip: 'Message',
+                          onPressed: () {
+                            final receiverId = post['user_id'];
+                            final receiverName = usernames[receiverId] ?? 'this user';
+                            
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MessageScreen(
+                                  receiverId: receiverId,
+                                  receiverUsername: receiverName,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   // Info row
@@ -851,7 +953,7 @@ class PostDetailScreen extends StatelessWidget {
             ),
           ],
         ),
-      ), // <- ✅ this was missing
-    ); // <- ✅ this was missing
+      ),
+    );
   }
 }
