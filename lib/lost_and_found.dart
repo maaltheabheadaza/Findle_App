@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:dio/dio.dart';
-import 'dart:io';
 import 'homepage_screen.dart';
 import 'create_ad.dart';
 import 'message_screen.dart';
@@ -35,6 +31,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
   List<Map<String, dynamic>> _posts = [];
   List<Map<String, dynamic>> _filteredPosts = [];
   final Map<String, String> _usernames = {};
+  final Map<String, String> _profileImages = {};
   final TextEditingController _searchController = TextEditingController();
   String? _selectedCategory;
   String? _selectedType;
@@ -96,7 +93,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
         print('Fetching usernames for user IDs: $userIds');
         final usersResponse = await Supabase.instance.client
             .from('users')
-            .select('id, username')
+            .select('id, username, profile_image_url')
             .inFilter('id', userIds);
 
         print('Users response: $usersResponse');
@@ -105,9 +102,11 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
         setState(() {
           for (var user in users) {
             _usernames[user['id']] = user['username'];
+            _profileImages[user['id']] = user['profile_image_url'];
           }
         });
         print('Usernames map: $_usernames');
+        print('Profile images map: $_profileImages');
       } catch (e) {
         print('Error fetching usernames: $e');
       }
@@ -403,7 +402,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => PostDetailScreen(post: post, usernames: _usernames),
+                                          builder: (context) => PostDetailScreen(post: post, usernames: _usernames, profileImages: _profileImages),
                                         ),
                                       );
                                     },
@@ -460,10 +459,15 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                                               const SizedBox(height: 4),
                                               Row(
                                                 children: [
-                                                  const Icon(
-                                                    Icons.person_outline,
-                                                    size: 16,
-                                                    color: AppColors.gray,
+                                                  CircleAvatar(
+                                                    radius: 12,
+                                                    backgroundColor: Colors.grey.shade200,
+                                                    backgroundImage: _profileImages[post['user_id']] != null
+                                                        ? NetworkImage(_profileImages[post['user_id']]!)
+                                                        : null,
+                                                    child: _profileImages[post['user_id']] == null
+                                                        ? const Icon(Icons.person, size: 16, color: Colors.grey)
+                                                        : null,
                                                   ),
                                                   const SizedBox(width: 4),
                                                   Text(
@@ -741,8 +745,14 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
 class PostDetailScreen extends StatelessWidget {
   final Map<String, dynamic> post;
   final Map<String, String> usernames;
+  final Map<String, String> profileImages;
 
-  const PostDetailScreen({Key? key, required this.post, required this.usernames}) : super(key: key);
+  const PostDetailScreen({
+    Key? key, 
+    required this.post, 
+    required this.usernames,
+    required this.profileImages,
+  }) : super(key: key);
 
   void _showImageDialog(BuildContext context, String imageUrl) {
     showDialog(
@@ -769,6 +779,67 @@ class PostDetailScreen extends StatelessWidget {
                 child: IconButton(
                   icon: const Icon(Icons.close, color: Colors.white, size: 30),
                   onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showProfileImageDialog(BuildContext context, String? profileImageUrl) {
+    if (profileImageUrl == null) return;
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            children: [
+              Container(
+                width: MediaQuery.of(context).size.width * 0.8,
+                height: MediaQuery.of(context).size.width * 0.8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: Image.network(
+                    profileImageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                          color: AppColors.maroon,
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(Icons.person, size: 100, color: Colors.grey[400]);
+                    },
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 0,
+                right: 0,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ),
             ],
@@ -860,16 +931,45 @@ class PostDetailScreen extends StatelessWidget {
                   // Username and Message Button
                   Row(
                     children: [
-                      const Icon(
-                        Icons.person_outline,
-                        size: 16,
-                        color: AppColors.gray,
+                      GestureDetector(
+                        onTap: () => _showProfileImageDialog(context, profileImages[post['user_id']]),
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: Colors.grey.shade200,
+                              backgroundImage: profileImages[post['user_id']] != null
+                                  ? NetworkImage(profileImages[post['user_id']]!)
+                                  : null,
+                              child: profileImages[post['user_id']] == null
+                                  ? const Icon(Icons.person, size: 20, color: Colors.grey)
+                                  : null,
+                            ),
+                            if (profileImages[post['user_id']] != null)
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.maroon,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.zoom_in,
+                                    color: Colors.white,
+                                    size: 12,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 10),
                       Text(
                         usernames[post['user_id']] ?? 'Anonymous',
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 16,
                           color: AppColors.gray,
                         ),
                       ),

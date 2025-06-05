@@ -123,7 +123,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => PostDetailScreen(post: post),
+                                    builder: (context) => PostDetailScreen(post: post, usernames: {}, profileImages: {},),
                                   ),
                                 );
                               }
