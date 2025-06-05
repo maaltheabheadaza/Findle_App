@@ -13,6 +13,20 @@ class LostAndFoundPage extends StatefulWidget {
   final bool showMyPosts;
   const LostAndFoundPage({Key? key, this.userId, this.showMyPosts = false}) : super(key: key);
 
+  static String formatDateTime(String? dateTimeStr) {
+    if (dateTimeStr == null) return '';
+    try {
+      final dateTime = DateTime.parse(dateTimeStr);
+      final hour = dateTime.hour;
+      final minute = dateTime.minute;
+      final amPm = hour < 12 ? 'AM' : 'PM';
+      final hour12 = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+      return '${dateTime.toString().substring(0, 10)} ${hour12.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $amPm';
+    } catch (e) {
+      return dateTimeStr;
+    }
+  }
+
   @override
   _LostAndFoundPageState createState() => _LostAndFoundPageState();
 }
@@ -529,11 +543,7 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                                                         size: 14,
                                                         color: AppColors.gray),
                                                     Text(
-                                                      post['created_at'] != null
-                                                          ? post['created_at']
-                                                              .toString()
-                                                              .substring(0, 10)
-                                                          : '',
+                                                      LostAndFoundPage.formatDateTime(post['created_at']),
                                                       style: const TextStyle(
                                                         color: AppColors.gray,
                                                         fontSize: 12,
@@ -920,9 +930,7 @@ class PostDetailScreen extends StatelessWidget {
                       const Icon(Icons.access_time, size: 16, color: AppColors.gray),
                       const SizedBox(width: 4),
                       Text(
-                        post['created_at'] != null
-                            ? post['created_at'].toString().substring(0, 10)
-                            : '',
+                        LostAndFoundPage.formatDateTime(post['created_at']),
                         style: const TextStyle(
                           color: AppColors.gray,
                           fontSize: 14,
