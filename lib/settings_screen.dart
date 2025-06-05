@@ -3,8 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:provider/provider.dart';
-import 'theme_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -138,9 +136,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
 
       if (mounted) {
+        Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Profile image updated successfully!'),
+            content: Text('Profile picture updated!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -206,7 +205,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Username updated successfully!'),
+            content: const Text('Username updated successfully!'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             margin: EdgeInsets.only(
@@ -257,7 +256,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Password updated successfully!'),
+            content: const Text('Password updated successfully!'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
             margin: EdgeInsets.only(

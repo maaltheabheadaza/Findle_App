@@ -152,6 +152,66 @@ class _HomePageScreenState extends State<HomePageScreen> {
     // TODO: Implement image upload functionality
   }
 
+  void _showExpandedProfileImage() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            children: [
+              Container(
+                width: MediaQuery.of(context).size.width * 0.8,
+                height: MediaQuery.of(context).size.width * 0.8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: profileImageUrl != null
+                      ? Image.network(
+                          profileImageUrl!,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                                color: primaryRed,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(Icons.person, size: 100, color: Colors.grey[400]);
+                          },
+                        )
+                      : Icon(Icons.person, size: 100, color: Colors.grey[400]),
+                ),
+              ),
+              Positioned(
+                top: 0,
+                right: 0,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -186,16 +246,43 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
-                    onTap: uploadProfileImage,
-                    child: CircleAvatar(
-                      radius: 30,
-                      backgroundColor: white,
-                      backgroundImage: profileImageUrl != null
-                          ? NetworkImage(profileImageUrl!)
-                          : null,
-                      child: profileImageUrl == null
-                          ? const Icon(Icons.person, size: 30, color: Colors.grey)
-                          : null,
+                    onTap: () {
+                      if (profileImageUrl != null) {
+                        _showExpandedProfileImage();
+                      } else {
+                        uploadProfileImage();
+                      }
+                    },
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 30,
+                          backgroundColor: white,
+                          backgroundImage: profileImageUrl != null
+                              ? NetworkImage(profileImageUrl!)
+                              : null,
+                          child: profileImageUrl == null
+                              ? const Icon(Icons.person, size: 30, color: Colors.grey)
+                              : null,
+                        ),
+                        if (profileImageUrl != null)
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: primaryRed,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.zoom_in,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -291,7 +378,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
                       MaterialPageRoute(builder: (context) => const SettingsScreen()),
                     );
                     if (updated == true) {
-                      fetchUserData(); // Refresh username after returning from settings
+                      fetchUserData(); // Refresh user data after returning from settings
                     }
                   },
                 ),
