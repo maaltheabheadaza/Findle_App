@@ -4,6 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import '../utils/encryption_helper.dart';
 import 'chat_list_screen.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+
 
 class MessageScreen extends StatefulWidget {
   final String receiverId;
@@ -82,21 +85,82 @@ class _MessageScreenState extends State<MessageScreen> {
     setState(() {});
   }
 
-  Future<void> _markMessagesAsSeen(List<Map<String, dynamic>> messages) async {
-    final unseenMessages = messages.where((m) =>
-        m['receiver_id'] == senderId &&
-        m['sender_id'] == widget.receiverId &&
-        m['seen'] == false).toList();
+    Future<void> _markMessagesAsSeen(List<Map<String, dynamic>> messages) async {
+      final unseenMessages = messages.where((m) =>
+          m['receiver_id'] == senderId &&
+          m['sender_id'] == widget.receiverId &&
+          m['seen'] == false).toList();
 
-    if (unseenMessages.isNotEmpty) {
-      final unseenIds = unseenMessages.map((m) => m['id']).toList();
-      await supabase
-          .from('messages')
-          .update({
-            'seen': true,
-            'seen_at': DateTime.now().toIso8601String(),
-          })
-          .filter('id', 'in', unseenIds);
+      if (unseenMessages.isNotEmpty) {
+        final unseenIds = unseenMessages.map((m) => m['id']).toList();
+        await supabase
+            .from('messages')
+            .update({
+              'seen': true,
+              'seen_at': DateTime.now().toIso8601String(),
+            })
+            .filter('id', 'in', unseenIds);
+      }
+    }
+
+  File? _selectedImage;
+
+  Future<void> _showImagePickerDialog() async {
+    final picker = ImagePicker();
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Wrap(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo),
+            title: const Text('Pick from Gallery'),
+            onTap: () async {
+              Navigator.pop(context);
+              final picked = await picker.pickImage(source: ImageSource.gallery);
+              if (picked != null) _uploadAndSendImage(File(picked.path));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.camera_alt),
+            title: const Text('Take a Picture'),
+            onTap: () async {
+              Navigator.pop(context);
+              final picked = await picker.pickImage(source: ImageSource.camera);
+              if (picked != null) _uploadAndSendImage(File(picked.path));
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _uploadAndSendImage(File image) async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${image.path.split('/').last}';
+    try {
+      await Supabase.instance.client.storage
+        .from('ad-images') // existing storage bucket
+        .upload(fileName, image);
+
+      final imageUrl = Supabase.instance.client.storage
+        .from('ad-images')
+        .getPublicUrl(fileName);
+
+      await supabase.from('messages').insert({
+        'sender_id': senderId,
+        'receiver_id': widget.receiverId,
+        'message': '', // No text
+        'image_url': imageUrl,
+        'seen': false,
+      });
+
+      setState(() {});
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send image: $e')),
+      );
     }
   }
 
@@ -290,61 +354,127 @@ class _MessageScreenState extends State<MessageScreen> {
                     itemBuilder: (context, index) {
                       final msg = messages[index];
                       final isMe = msg['sender_id'] == senderId;
-                      String decryptedText;
-                      try {
-                        decryptedText = EncryptionHelper.decryptText(msg['message']);
-                      } catch (e) {
-                        decryptedText = '[Unable to decrypt]';
+
+                      final messageText = (msg['message'] as String?)?.trim() ?? '';
+                      final imageUrl = (msg['image_url'] as String?)?.trim();
+
+                      // ❌ Skip rendering if both are empty
+                      if (messageText.isEmpty && (imageUrl == null || imageUrl.isEmpty)) {
+                        return const SizedBox.shrink();
                       }
+
+                      String decryptedText = '';
+                      final hasText = messageText.isNotEmpty;
+                      final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+
+                      if (hasText) {
+                        try {
+                          decryptedText = EncryptionHelper.decryptText(msg['message']);
+                        } catch (e) {
+                          decryptedText = '[Unable to decrypt]';
+                        }
+                      }
+
 
                       if (_searchController.text.isNotEmpty &&
                           decryptedText.toLowerCase().contains(_searchController.text.toLowerCase())) {
                         _searchMatchIndexes.add(index);
                       }
 
-                      return Align(
-                        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                        child: GestureDetector(
-                          onLongPress: () async {
-                            if (isMe) {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  backgroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  title: const Text('Unsend Message', style: TextStyle(color: Color(0xFF700100))),
-                                  content: const Text('Are you sure you want to unsend this message?'),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
-                                    TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Unsend', style: TextStyle(color: Color(0xFF700100)))),
-                                  ],
-                                ),
-                              );
-                              if (confirm == true) {
-                                await supabase.from('messages').delete().eq('id', msg['id']);
-                                setState(() {});
-                              }
+                  return Align(
+                    alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                    child: GestureDetector(
+                      onLongPress: () async {
+                        if (isMe) {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              backgroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              title: const Text('Unsend Message', style: TextStyle(color: Color(0xFF700100))),
+                              content: const Text('Are you sure you want to unsend this message?'),
+                              actions: [
+                                TextButton(
+                                    onPressed: () => Navigator.of(context).pop(false),
+                                    child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+                                TextButton(
+                                    onPressed: () => Navigator.of(context).pop(true),
+                                    child: const Text('Unsend', style: TextStyle(color: Color(0xFF700100)))),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            // Delete image if present
+                            if (msg['image_url'] != null && msg['image_url'].toString().isNotEmpty) {
+                              final imagePath = Uri.parse(msg['image_url']).pathSegments.last;
+                              await Supabase.instance.client.storage
+                                  .from('ad-images') // your bucket
+                                  .remove([imagePath]);
                             }
-                          },
-                          child: Column(
-                            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                margin: const EdgeInsets.symmetric(vertical: 4),
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: isMe ? const Color(0xFFF6C401) : Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(12),
+                            // Delete the message
+                            await supabase.from('messages').delete().eq('id', msg['id']);
+                            setState(() {});
+                          }
+                        }
+                      },
+                      child: Column(
+                        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                        children: [
+                          if (hasImage)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => FullImageScreen(imageUrl: imageUrl!),
+                                    ),
+                                  );
+                                },
+                                child: Image.network(
+                                  imageUrl!,
+                                  width: 200,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, progress) {
+                                    if (progress == null) return child;
+                                    return Container(
+                                      width: 200,
+                                      height: 200,
+                                      color: Colors.grey.shade200,
+                                      child: const Center(child: CircularProgressIndicator()),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 200,
+                                      height: 200,
+                                      color: Colors.grey.shade200,
+                                      child: const Center(child: Icon(Icons.broken_image, color: Colors.grey, size: 40)),
+                                    );
+                                  },
                                 ),
-                                child: Text(decryptedText),
                               ),
-                              Text(formatTimestamp(msg['timestamp']), style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                              if (isMe && msg['seen'] == true && msg['seen_at'] != null)
-                                Text('✓ Seen ${formatTimestamp(msg['seen_at'])}', style: const TextStyle(fontSize: 10, color: Colors.green)),
-                            ],
-                          ),
-                        ),
-                      );
+                            ),
+                          if (hasText)
+                            Container(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isMe ? const Color(0xFFF6C401) : Colors.grey[300],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(decryptedText),
+                            ),
+                          Text(formatTimestamp(msg['timestamp']), style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                          if (isMe && msg['seen'] == true && msg['seen_at'] != null)
+                            Text('✓ Seen ${formatTimestamp(msg['seen_at'])}', style: const TextStyle(fontSize: 10, color: Colors.green)),
+                        ],
+                      ),
+                    ),
+                  );
+
+
                     },
                   );
                 },
@@ -354,6 +484,11 @@ class _MessageScreenState extends State<MessageScreen> {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.camera_alt, color: Colors.grey),
+                    onPressed: _showImagePickerDialog,
+                  ),
+                  const SizedBox(width: 4),
                   Expanded(
                     child: TextField(
                       controller: _messageController,
@@ -363,14 +498,51 @@ class _MessageScreenState extends State<MessageScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton(icon: const Icon(Icons.send, color: Color(0xFF700100)), onPressed: _sendMessage),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.send, color: Color(0xFF700100)),
+                    onPressed: _sendMessage,
+                  ),
                 ],
               ),
             ),
+
           ],
         ),
       ),
     );
   }
 }
+
+class FullImageScreen extends StatelessWidget {
+  final String imageUrl;
+
+  const FullImageScreen({super.key, required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Center(
+          child: Hero(
+            tag: imageUrl,
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(Icons.broken_image, color: Colors.white, size: 60);
+              },
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return const CircularProgressIndicator(color: Colors.white);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
