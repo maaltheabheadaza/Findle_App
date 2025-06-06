@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'homepage_screen.dart';
+import 'package:intl/intl.dart';
+import 'homepage_screen.dart'; // Make sure PostDetailScreen is here or update import
 import 'lost_and_found.dart';
+
+// Custom colors
+class AppColors {
+  static const Color maroon = Color(0xFF800000);
+  static const Color white = Colors.white;
+  static const Color gray = Colors.grey;
+  static const Color darkGray = Color(0xFF4F4F4F);
+  static const Color lightGray = Color(0xFFF5F5F5);
+  static const Color paleYellow = Color(0xFFFFF9C4);
+}
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
@@ -21,23 +31,68 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     _fetchNotifications();
   }
 
+
   Future<void> _fetchNotifications() async {
     setState(() => _isLoading = true);
-
     try {
       final currentUser = Supabase.instance.client.auth.currentUser;
-      if (currentUser != null) {
-        final response = await Supabase.instance.client
-            .from('notifications')
-            .select('*, post:post_id(*)')
-            .eq('user_id', currentUser.id)
-            .order('created_at', ascending: false);
+      if (currentUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
 
+      final userPostsResponse = await Supabase.instance.client
+          .from('post')
+          .select('category, post_type')
+          .eq('user_id', currentUser.id) as List;
+
+      if (userPostsResponse.isEmpty) {
         setState(() {
-          _notifications = List<Map<String, dynamic>>.from(response ?? []);
+          _notifications = [];
           _isLoading = false;
         });
+        return;
       }
+
+      // Prepare filter list
+      final filters = userPostsResponse.map<Map<String, String>>((post) {
+        final category = post['category'] ?? '';
+        final postType = post['post_type'] ?? '';
+        final oppositePostType =
+            postType.toLowerCase() == 'lost' ? 'found' : 'lost';
+        return {
+          'category': category,
+          'post_type': oppositePostType,
+        };
+      }).toList();
+
+      // Fetch all notifications with related posts
+      final notificationsResponse = await Supabase.instance.client
+          .from('notifications')
+          .select('*, post:post!notifications_post_id_fkey(*)')
+          .eq('user_id', currentUser.id)
+          .order('created_at', ascending: false);
+
+      final allNotifications =
+          List<Map<String, dynamic>>.from(notificationsResponse ?? []);
+
+      // Manual filter
+      final filtered = allNotifications.where((notif) {
+        final post = notif['post'] as Map<String, dynamic>?;
+        if (post == null) return false;
+        final postCategory = post['category'] ?? '';
+        final postType = post['post_type']?.toLowerCase() ?? '';
+        final postUserId = post['user_id'];
+
+        return filters.any((filter) =>
+            filter['category'] == postCategory &&
+            filter['post_type'] == postType);
+      }).toList();
+
+      setState(() {
+        _notifications = filtered;
+        _isLoading = false;
+      });
     } catch (e) {
       print('❌ Error fetching notifications: $e');
       setState(() => _isLoading = false);
@@ -50,9 +105,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           .from('notifications')
           .update({'is_read': true})
           .eq('id', notificationId);
-      
+
       setState(() {
-        final index = _notifications.indexWhere((n) => n['id'] == notificationId);
+        final index =
+            _notifications.indexWhere((n) => n['id'] == notificationId);
         if (index != -1) {
           _notifications[index]['is_read'] = true;
         }
@@ -62,130 +118,391 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+Future<void> markAllAsRead() async {
+  try {
+    for (final notif in _notifications) {
+      await Supabase.instance.client
+          .from('notifications')
+          .update({'is_read': true})
+          .eq('id', notif['id']);
+    }
+
+    await _fetchNotifications(); // Refresh list
+  } catch (e) {
+    print('❌ Error marking all as read: $e');
+  }
+}
+
+
+  
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.lightGray,
-      appBar: AppBar(
-        centerTitle: true,
-        backgroundColor: AppColors.white,
-        iconTheme: const IconThemeData(color: AppColors.maroon),
-        elevation: 1,
-        title: const Text(
-          'Notifications',
-          style: TextStyle(
-            color: AppColors.maroon,
-            fontWeight: FontWeight.bold,
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: const Color(0xFFFFFBF0), // Warm white background
+    appBar: AppBar(
+      centerTitle: false,
+      backgroundColor: Color.fromARGB(255, 112, 1, 0),
+      iconTheme: const IconThemeData(color: Colors.white), // Maroon
+      elevation: 0,
+      shadowColor: Colors.black12,
+      surfaceTintColor: Colors.transparent,
+      title: const Text(
+        'Notifications',
+        style: TextStyle(
+          color: Colors.white, // Maroon
+          fontWeight: FontWeight.w700,
+          fontSize: 24,
+          letterSpacing: -0.5,
+        ),
+      ),
+      actions: [
+        Container(
+          margin: const EdgeInsets.only(right: 8),
+          child: IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8DC), // Light yellow
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.done_all_rounded,
+                size: 18,
+                color: Color.fromARGB(255, 1112, 1, 0), // Maroon
+              ),
+            ),
+            tooltip: 'Mark all as read',
+            onPressed: markAllAsRead,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchNotifications,
+        Container(
+          margin: const EdgeInsets.only(right: 12),
+          child: IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8DC), // Light yellow
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.refresh_rounded,
+                size: 18,
+                color: Color.fromARGB(255, 1112, 1, 0), // Maroon
+              ),
+            ),
             tooltip: 'Refresh',
+            onPressed: _fetchNotifications,
           ),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _notifications.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No notifications yet.',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: AppColors.gray,
+        ),
+      ],
+    ),
+    body: _isLoading
+        ? const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: Color.fromARGB(255, 1112, 1, 0),// Maroon
+            ),
+          )
+        : _notifications.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF8DC), // Light yellow
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color.fromARGB(255, 1112, 1, 0).withOpacity(0.1),
+                          width: 2,
                         ),
                       ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _notifications.length,
-                      itemBuilder: (context, index) {
-                        final notification = _notifications[index];
-                        final post = notification['post'] as Map<String, dynamic>?;
-                        
-                        return Card(
-                          color: notification['is_read'] == true 
-                              ? AppColors.white 
-                              : AppColors.paleYellow,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: InkWell(
-                            onTap: () {
-                              if (post != null) {
-                                _markAsRead(notification['id']);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => PostDetailScreen(post: post, usernames: {}, profileImages: {},),
+                      child: const Icon(
+                        Icons.notifications_none_rounded,
+                        size: 48,
+                        color: Color.fromARGB(255, 1112, 1, 0), // Maroon
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'No notifications yet',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Color.fromARGB(255, 1112, 1, 0), // Maroon
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'When you get notifications, they\'ll show up here',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF6B4E71), // Muted maroon
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              )
+            : CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final notification = _notifications[index];
+                          final post = notification['post'] as Map<String, dynamic>?;
+                          final isUnread = notification['is_read'] != true;
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: isUnread
+                                  ? Border.all(
+                                      color: const Color(0xFFFFD700).withOpacity(0.6), // Golden yellow
+                                      width: 2,
+                                    )
+                                  : Border.all(
+                                      color: const Color(0xFFF5F5F5),
+                                      width: 1,
+                                    ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                                if (isUnread)
+                                  BoxShadow(
+                                    color: const Color(0xFFFFD700).withOpacity(0.15), // Golden yellow shadow
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4),
                                   ),
-                                );
-                              }
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.notifications,
-                                        color: notification['is_read'] == true 
-                                            ? AppColors.gray 
-                                            : AppColors.maroon,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          notification['message'] ?? 'New notification',
-                                          style: TextStyle(
-                                            color: notification['is_read'] == true 
-                                                ? AppColors.gray 
-                                                : AppColors.darkGray,
-                                            fontWeight: notification['is_read'] == true 
-                                                ? FontWeight.normal 
-                                                : FontWeight.bold,
-                                          ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  if (post != null) {
+                                    _markAsRead(notification['id']);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => PostDetailScreen(
+                                          post: post,
+                                          usernames: const {},
+                                          profileImages: const {},
                                         ),
                                       ),
-                                    ],
+                                    );
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    gradient: isUnread
+                                        ? LinearGradient(
+                                            colors: [
+                                              const Color(0xFFFFFDF7), // Very light yellow
+                                              Colors.white,
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          )
+                                        : null,
                                   ),
-                                  if (post != null) ...[
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      post['title'] ?? '',
-                                      style: const TextStyle(
-                                        color: AppColors.maroon,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    notification['created_at'] != null
-                                        ? notification['created_at'].toString().substring(0, 10)
-                                        : '',
-                                    style: const TextStyle(
-                                      color: AppColors.gray,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(20),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Modern notification icon
+                                        Container(
+                                          width: 48,
+                                          height: 48,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: isUnread
+                                                  ? [
+                                                      const Color.fromARGB(255, 1112, 1, 0), // Maroon
+                                                      const Color.fromARGB(255, 1112, 1, 0), // Lighter maroon
+                                                    ]
+                                                  : [
+                                                      const Color(0xFFFFF8DC), // Light yellow
+                                                      const Color(0xFFFFF0CD), // Slightly darker yellow
+                                                    ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius: BorderRadius.circular(14),
+                                            border: Border.all(
+                                              color: isUnread 
+                                                  ? const Color(0xFFFFD700).withOpacity(0.3)
+                                                  : const Color.fromARGB(255, 1112, 1, 0).withOpacity(0.2),
+                                              width: 1.5,
+                                            ),
+                                            boxShadow: isUnread
+                                                ? [
+                                                    BoxShadow(
+                                                      color: const Color.fromARGB(255, 1112, 1, 0).withOpacity(0.2),
+                                                      blurRadius: 8,
+                                                      offset: const Offset(0, 2),
+                                                    ),
+                                                  ]
+                                                : null,
+                                          ),
+                                          child: Icon(
+                                            Icons.notifications_rounded,
+                                            color: isUnread ? Colors.white : const Color.fromARGB(255, 1112, 1, 0),
+                                            size: 24,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        // Content section
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              // Main notification message
+                                              Text(
+                                                notification['message'] ?? 'New notification',
+                                                style: TextStyle(
+                                                  color: const Color.fromARGB(255, 1112, 1, 0), // Maroon
+                                                  fontWeight: isUnread ? FontWeight.w600 : FontWeight.w500,
+                                                  fontSize: 16,
+                                                  height: 1.4,
+                                                  letterSpacing: -0.2,
+                                                ),
+                                              ),
+                                              if (post != null) ...[
+                                                const SizedBox(height: 8),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFFFFDF7), // Very light yellow
+                                                    borderRadius: BorderRadius.circular(10),
+                                                    border: Border.all(
+                                                      color: const Color(0xFFFFD700).withOpacity(0.3), // Golden yellow border
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Container(
+                                                        padding: const EdgeInsets.all(4),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color.fromARGB(255, 1112, 1, 0).withOpacity(0.1), // Light maroon
+                                                          borderRadius: BorderRadius.circular(6),
+                                                        ),
+                                                        child: const Icon(
+                                                          Icons.article_rounded,
+                                                          size: 14,
+                                                          color: Color.fromARGB(255, 1112, 1, 0), // Maroon
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 10),
+                                                      Expanded(
+                                                        child: Text(
+                                                          post['title'] ?? 'Untitled Post',
+                                                          style: const TextStyle(
+                                                            color: Color(0xFF6B4E71), // Muted maroon
+                                                            fontWeight: FontWeight.w500,
+                                                            fontSize: 14,
+                                                            height: 1.3,
+                                                          ),
+                                                          maxLines: 2,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                              const SizedBox(height: 12),
+                                              // Timestamp and status
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.schedule_rounded,
+                                                    size: 14,
+                                                    color: const Color(0xFF6B4E71), // Muted maroon
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    notification['created_at'] != null
+                                                        ? DateFormat('MMM dd, yyyy').format(
+                                                            DateTime.parse(
+                                                              notification['created_at'],
+                                                            ),
+                                                          )
+                                                        : '',
+                                                    style: const TextStyle(
+                                                      color: Color(0xFF6B4E71), // Muted maroon
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  const Spacer(),
+                                                  if (isUnread)
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 3,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        gradient: const LinearGradient(
+                                                          colors: [
+                                                            Color(0xFFFFD700), // Golden yellow
+                                                            Color(0xFFFFA500), // Orange yellow
+                                                          ],
+                                                        ),
+                                                        borderRadius: BorderRadius.circular(12),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: const Color(0xFFFFD700).withOpacity(0.3),
+                                                            blurRadius: 4,
+                                                            offset: const Offset(0, 1),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: const Text(
+                                                        'NEW',
+                                                        style: TextStyle(
+                                                          color: Color.fromARGB(255, 112, 1, 0), // Maroon text
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.w700,
+                                                          letterSpacing: 0.5,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                ),
+                                ),
                               ),
                             ),
                           ),
                         );
-                      },
+                        },
+                        childCount: _notifications.length,
+                      ),
                     ),
-        ),
-      ),
-    );
-  }
-} 
+                  ),
+                ],
+              ),
+  );
+}
+}

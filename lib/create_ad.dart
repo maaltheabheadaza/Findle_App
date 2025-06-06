@@ -32,7 +32,6 @@ class _CreateAdPageState extends State<CreateAdScreen> {
         Navigator.of(context).pushReplacementNamed('/login');
       });
     }
-    // If editing, pre-fill fields
     if (widget.isEdit && widget.post != null) {
       _category = widget.post!['category'];
       _postType = widget.post!['post_type'];
@@ -58,14 +57,10 @@ class _CreateAdPageState extends State<CreateAdScreen> {
       final storageResponse = await Supabase.instance.client.storage
           .from('ad-images')
           .upload(fileName, image);
-      if (storageResponse.isEmpty) {
-        print('Image upload failed: empty response');
-        return null;
-      }
+      if (storageResponse.isEmpty) return null;
       final publicUrl = Supabase.instance.client.storage
           .from('ad-images')
           .getPublicUrl(fileName);
-      print('Public URL: $publicUrl');
       return publicUrl;
     } catch (e) {
       print('Image upload error: $e');
@@ -74,11 +69,12 @@ class _CreateAdPageState extends State<CreateAdScreen> {
   }
 
   Future<void> _submitAd() async {
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() => _isLoading = true);
     final user = Supabase.instance.client.auth.currentUser;
     String? imageUrl = _existingImageUrl;
 
-    // If a new image is picked, upload it
     if (_imageFile != null && user != null) {
       imageUrl = await _uploadImage(_imageFile!, user.id);
       if (imageUrl == null) {
@@ -91,21 +87,20 @@ class _CreateAdPageState extends State<CreateAdScreen> {
     }
 
     try {
+      final supabase = Supabase.instance.client;
+      dynamic newPost;
+
       if (widget.isEdit && widget.post != null) {
-        // UPDATE
-        await Supabase.instance.client
-            .from('post')
-            .update({
-              'category': _category,
-              'post_type': _postType,
-              'title': _titleController.text,
-              'description': _descController.text,
-              'image_url': imageUrl,
-            })
-            .eq('id', widget.post!['id']);
+        await supabase.from('post').update({
+          'category': _category,
+          'post_type': _postType,
+          'title': _titleController.text,
+          'description': _descController.text,
+          'image_url': imageUrl,
+        }).eq('id', widget.post!['id']);
       } else {
         // CREATE
-        final response = await Supabase.instance.client
+        final response = await supabase
             .from('post')
             .insert({
               'category': _category,
@@ -119,44 +114,35 @@ class _CreateAdPageState extends State<CreateAdScreen> {
             .select()
             .single();
 
-        // Search for similar posts
-        final similarPosts = await Supabase.instance.client
+        newPost = response;
+
+        // Notify other users who posted opposite type in same category
+        String oppositePostType = (_postType == 'Lost') ? 'Found' : 'Lost';
+
+        final matchingPosts = await supabase
             .from('post')
-            .select('user_id, title, description')
-            .neq('user_id', user?.id ?? '')
-            .then((response) => response as List);
+            .select('user_id, title')
+            .eq('category', _category as Object)
+            .eq('post_type', oppositePostType)
+            .neq('user_id', user?.id ?? '');
 
-        // Create notifications for users with similar posts
-        if (similarPosts.isNotEmpty) {
-          final newPostWords = '${_titleController.text} ${_descController.text}'
-              .toLowerCase()
-              .split(RegExp(r'\s+'))
-              .where((word) => word.length > 3) // Only consider words longer than 3 characters
-              .toSet();
+        final seenUserIds = <String>{};
 
-          final matchingPosts = similarPosts.where((post) {
-            final existingPostWords = '${post['title']} ${post['description']}'
-                .toLowerCase()
-                .split(RegExp(r'\s+'))
-                .where((word) => word.length > 3)
-                .toSet();
-
-            // Check if there are any common words between the posts
-            return newPostWords.any((word) => existingPostWords.contains(word));
-          }).toList();
-
-          // Create notifications for users with matching posts
-          for (final post in matchingPosts) {
-            await Supabase.instance.client.from('notifications').insert({
-              'user_id': post['user_id'],
-              'post_id': response['id'],
-              'message': 'Someone posted something similar to your post: "${post['title']}"',
+        for (final post in matchingPosts) {
+          final userId = post['user_id'] as String;
+          if (!seenUserIds.contains(userId)) {
+            seenUserIds.add(userId);
+            await supabase.from('notifications').insert({
+              'user_id': userId,
+              'post_id': newPost['id'],
+              'message': 'New $_postType post in category "$_category" matching your $oppositePostType post: "${post['title']}"',
               'is_read': false,
               'created_at': DateTime.now().toIso8601String(),
             });
           }
         }
       }
+
       setState(() => _isLoading = false);
       if (!mounted) return;
       showDialog(
@@ -164,10 +150,7 @@ class _CreateAdPageState extends State<CreateAdScreen> {
         builder: (context) => AlertDialog(
           backgroundColor: AppColors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(
-            widget.isEdit ? 'Success' : 'Success',
-            style: const TextStyle(color: AppColors.maroon),
-          ),
+          title: const Text('Success', style: TextStyle(color: AppColors.maroon)),
           content: Text(widget.isEdit
               ? 'Post Updated Successfully!'
               : 'Post Created Successfully!'),
@@ -175,7 +158,7 @@ class _CreateAdPageState extends State<CreateAdScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).pop(true); // Return true to refresh
+                Navigator.of(context).pop(true);
               },
               child: const Text('OK', style: TextStyle(color: AppColors.maroon)),
             ),
@@ -230,7 +213,6 @@ class _CreateAdPageState extends State<CreateAdScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Category Dropdown
                       DropdownButtonFormField<String>(
                         value: _category,
                         decoration: InputDecoration(
@@ -249,7 +231,6 @@ class _CreateAdPageState extends State<CreateAdScreen> {
                             value == null ? 'Please select a category' : null,
                       ),
                       const SizedBox(height: 18),
-                      // Post Type Dropdown
                       DropdownButtonFormField<String>(
                         value: _postType,
                         decoration: InputDecoration(
@@ -280,7 +261,6 @@ class _CreateAdPageState extends State<CreateAdScreen> {
                             value == null ? 'Please select post type' : null,
                       ),
                       const SizedBox(height: 18),
-                      // Title
                       TextFormField(
                         controller: _titleController,
                         decoration: InputDecoration(
@@ -292,7 +272,6 @@ class _CreateAdPageState extends State<CreateAdScreen> {
                             value == null || value.isEmpty ? 'Enter item title' : null,
                       ),
                       const SizedBox(height: 18),
-                      // Description
                       TextFormField(
                         controller: _descController,
                         decoration: InputDecoration(
@@ -305,7 +284,6 @@ class _CreateAdPageState extends State<CreateAdScreen> {
                             value == null || value.isEmpty ? 'Enter description' : null,
                       ),
                       const SizedBox(height: 18),
-                      // Image Picker
                       GestureDetector(
                         onTap: _pickImage,
                         child: Container(
@@ -320,61 +298,24 @@ class _CreateAdPageState extends State<CreateAdScreen> {
                                   borderRadius: BorderRadius.circular(12),
                                   child: Image.file(_imageFile!, fit: BoxFit.cover, width: double.infinity),
                                 )
-                              : (_existingImageUrl != null && _existingImageUrl!.isNotEmpty)
+                              : _existingImageUrl != null
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
-                                      child: Image.network(_existingImageUrl!, fit: BoxFit.cover, width: double.infinity),
+                                      child: Image.network(_existingImageUrl!, fit: BoxFit.cover),
                                     )
-                                  : const Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.add_a_photo, size: 38, color: AppColors.gray),
-                                          SizedBox(height: 8),
-                                          Text('Tap to add image', style: TextStyle(color: AppColors.gray)),
-                                        ],
-                                      ),
-                                    ),
+                                  : const Center(child: Text('Tap to select an image')),
                         ),
                       ),
-                      const SizedBox(height: 28),
-                      // Create/Update Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.maroon,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 2,
-                          ),
-                          onPressed: _isLoading
-                              ? null
-                              : () async {
-                                  if (_formKey.currentState!.validate()) {
-                                    await _submitAd();
-                                  }
-                                },
-                          child: _isLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    color: AppColors.yellow,
-                                    strokeWidth: 2.5,
-                                  ),
-                                )
-                              : Text(
-                                  widget.isEdit ? 'Update Post' : 'Post',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    letterSpacing: 0.5,
-                                    color: AppColors.yellow,
-                                  ),
-                                ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _submitAd,
+                        child: _isLoading
+                            ? const CircularProgressIndicator()
+                            : Text(widget.isEdit ? 'Update Post' : 'Create Post'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color.fromARGB(255, 86, 26, 21),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
                       ),
                     ],

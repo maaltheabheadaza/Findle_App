@@ -325,15 +325,6 @@ class _HomePageScreenState extends State<HomePageScreen> {
                     }
                   },
                 ),
-                
-              _buildDrawerItem(
-                icon: Icons.favorite,
-                title: 'Favourites',
-                index: 1,
-                onTap: () {
-                  // TODO: Navigate to favourites screen
-                },
-              ),
               _buildDrawerItem(
                 icon: Icons.message,
                 title: 'Messages',
