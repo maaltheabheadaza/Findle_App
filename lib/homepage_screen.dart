@@ -217,13 +217,6 @@ class _HomePageScreenState extends State<HomePageScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: primaryRed,
-        title: Text(
-          'Findle',
-          style: GoogleFonts.poppins(
-            color: white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline, color: AppColors.yellow),
