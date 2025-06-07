@@ -69,9 +69,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       // Fetch all notifications with related posts
       final notificationsResponse = await Supabase.instance.client
           .from('notifications')
-          .select('*, post:post!notifications_post_id_fkey(*)')
+          .select('*, post:post!notifications_post_id_fkey(*), user:users(*)')
           .eq('user_id', currentUser.id)
           .order('created_at', ascending: false);
+  
 
       final allNotifications =
           List<Map<String, dynamic>>.from(notificationsResponse ?? []);
@@ -133,8 +134,28 @@ Future<void> markAllAsRead() async {
   }
 }
 
+Future<void> _deleteNotification(String notificationId) async {
+  try {
+    final response = await Supabase.instance.client
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .select(); // <- ADD THIS LINE to force a real response
 
-  
+    print('Delete response: $response');
+
+    if (response == null || response.isEmpty) {
+      print('❌ Delete failed: No rows deleted');
+      return;
+    }
+
+    print('✅ Notification deleted from Supabase');
+  } catch (e) {
+    print('❌ Exception deleting notification: $e');
+  }
+}
+
+
   @override
 Widget build(BuildContext context) {
   return Scaffold(
@@ -257,7 +278,29 @@ Widget build(BuildContext context) {
                           final post = notification['post'] as Map<String, dynamic>?;
                           final isUnread = notification['is_read'] != true;
 
-                          return Container(
+
+                           return Dismissible(
+                                  key: Key(notification['id'].toString()),
+                                  direction: DismissDirection.endToStart, // swipe left only
+                                  background: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.only(left: 20),
+                                    color: Colors.red,
+                                    child: const Icon(Icons.delete, color: Colors.white),
+                                  ),
+                                 onDismissed: (direction) async {
+                                    final notificationId = notification['id'];
+
+                                    await _deleteNotification(notificationId.toString());
+
+                                    // Re-fetch notifications to confirm
+                                    await _fetchNotifications();
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Notification deleted')),
+                                    );
+                                  },
+                          child : Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
@@ -495,7 +538,8 @@ Widget build(BuildContext context) {
                               ),
                             ),
                           ),
-                        );
+                        ),
+                          );  
                         },
                         childCount: _notifications.length,
                       ),
