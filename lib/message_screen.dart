@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
-import '../utils/encryption_helper.dart';
 import 'chat_list_screen.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -72,7 +71,7 @@ class _MessageScreenState extends State<MessageScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    final encryptedText = EncryptionHelper.encryptText(text);
+    final encryptedText = text;
 
     await supabase.from('messages').insert({
       'sender_id': senderId,
@@ -332,7 +331,11 @@ class _MessageScreenState extends State<MessageScreen> {
                           (m['sender_id'] == senderId && m['receiver_id'] == widget.receiverId) ||
                           (m['receiver_id'] == senderId && m['sender_id'] == widget.receiverId))
                       .toList();
-                  _markMessagesAsSeen(messages);
+                  WidgetsBinding.instance.addPostFrameCallback((_) async {
+                    await _markMessagesAsSeen(messages);
+                    setState(() {}); // Force UI to rebuild with new seen data
+                  });
+
                   _searchMatchIndexes.clear();
 
                   if (messages.isEmpty) {
@@ -362,11 +365,7 @@ class _MessageScreenState extends State<MessageScreen> {
                       final hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
                       if (hasText) {
-                        try {
-                          decryptedText = EncryptionHelper.decryptText(msg['message']);
-                        } catch (e) {
-                          decryptedText = '[Unable to decrypt]';
-                        }
+                        decryptedText = msg['message'] ?? '';
                       }
 
 
@@ -460,9 +459,20 @@ class _MessageScreenState extends State<MessageScreen> {
                               ),
                               child: Text(decryptedText),
                             ),
-                          Text(formatTimestamp(msg['timestamp']), style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                          if (isMe && msg['seen'] == true && msg['seen_at'] != null)
-                            Text('✓ Seen ${formatTimestamp(msg['seen_at'])}', style: const TextStyle(fontSize: 10, color: Colors.green)),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  DateFormat.jm().format(DateTime.parse(msg['timestamp']).toLocal()),
+                                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                ),
+                                if (msg['sender_id'] == senderId && msg['seen'] == true && msg['seen_at'] != null) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(Icons.done_all, size: 14, color: Colors.blueAccent),
+                                ],
+                              ],
+                            )
+
                         ],
                       ),
                     ),
@@ -539,4 +549,3 @@ class FullImageScreen extends StatelessWidget {
     );
   }
 }
-
