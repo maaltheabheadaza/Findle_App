@@ -24,13 +24,14 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<Map<String, dynamic>> _notifications = [];
   bool _isLoading = true;
+  final Map<String, String> _usernames = {};
+  final Map<String, String> _profileImages = {};
 
   @override
   void initState() {
     super.initState();
     _fetchNotifications();
   }
-
 
   Future<void> _fetchNotifications() async {
     setState(() => _isLoading = true);
@@ -89,6 +90,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             filter['category'] == postCategory &&
             filter['post_type'] == postType);
       }).toList();
+
+      // Get all unique user IDs from posts
+      final userIds = filtered
+          .where((notif) => notif['post']?['user_id'] != null)
+          .map((notif) => notif['post']['user_id'])
+          .toSet()
+          .toList();
+
+      if (userIds.isNotEmpty) {
+        try {
+          final usersResponse = await Supabase.instance.client
+              .from('users')
+              .select('id, username, profile_image_url')
+              .inFilter('id', userIds);
+
+          final users = List<Map<String, dynamic>>.from(usersResponse);
+          setState(() {
+            for (var user in users) {
+              _usernames[user['id']] = user['username'];
+              _profileImages[user['id']] = user['profile_image_url'];
+            }
+          });
+        } catch (e) {
+          print('Error fetching usernames: $e');
+        }
+      }
 
       setState(() {
         _notifications = filtered;
@@ -339,8 +366,8 @@ Widget build(BuildContext context) {
                                       MaterialPageRoute(
                                         builder: (context) => PostDetailScreen(
                                           post: post,
-                                          usernames: const {},
-                                          profileImages: const {},
+                                          usernames: _usernames,
+                                          profileImages: _profileImages,
                                         ),
                                       ),
                                     );
