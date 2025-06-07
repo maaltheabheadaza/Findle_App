@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'lost_and_found.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -549,6 +550,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           style: GoogleFonts.poppins(
                             fontSize: 16,
                             color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Container(
+                          width: 200,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              final user = Supabase.instance.client.auth.currentUser;
+                              if (user != null) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => LostAndFoundPage(
+                                      userId: user.id,
+                                      showMyPosts: true,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: Icon(Icons.article_rounded, color: Colors.white),
+                            label: Text(
+                              'My Posts',
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryRed,
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              elevation: 2,
+                            ),
                           ),
                         ),
                       ],
