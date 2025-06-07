@@ -246,46 +246,40 @@ class _MessageScreenState extends State<MessageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const ChatListScreen()),
-        );
-        return false;
-      },
+     return WillPopScope(
+    onWillPop: () async {
+      Navigator.pop(context);  // Just pop back to previous screen
+      return false;            // Prevent default system back behavior
+    },
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF700100),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const ChatListScreen()),
-              );
-            },
-          ),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF700100),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);  // Also just pop when back arrow pressed
+          },
+        ),
           title: Row(
-            children: [
-              CircleAvatar(
-                radius: 17,
-                backgroundColor: Colors.grey.shade200,
-                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
-                child: avatarUrl == null
-                    ? const Icon(Icons.person, color: Colors.grey)
-                    : null,
-              ),
+          children: [
+            CircleAvatar(
+              radius: 17,
+              backgroundColor: Colors.grey.shade200,
+              backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
+              child: avatarUrl == null
+                  ? const Icon(Icons.person, color: Colors.grey)
+                  : null,
+            ),
               const SizedBox(width: 10),
-              Text(
-                '@${widget.receiverUsername}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
-              ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.search, color: Colors.white),
-                onPressed: _toggleSearchBar,
-              ),
+            Text(
+              '@${widget.receiverUsername}',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+            ),
+               const Spacer(),
+            IconButton(
+              icon: const Icon(Icons.search, color: Colors.white),
+              onPressed: _toggleSearchBar,
+            ),
             ],
           ),
         ),
