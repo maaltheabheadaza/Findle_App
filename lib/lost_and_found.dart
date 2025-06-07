@@ -398,13 +398,16 @@ class _LostAndFoundPageState extends State<LostAndFoundPage> {
                                       const EdgeInsets.symmetric(vertical: 10),
                                   elevation: 3,
                                   child: InkWell(
-                                    onTap: () {
-                                      Navigator.push(
+                                    onTap: () async {
+                                      final shouldRefresh = await Navigator.push(
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) => PostDetailScreen(post: post, usernames: _usernames, profileImages: _profileImages),
                                         ),
                                       );
+                                      if (shouldRefresh == true) {
+                                        _fetchPosts();
+                                      }
                                     },
                                     child: Column(
                                       crossAxisAlignment:
@@ -849,9 +852,43 @@ class PostDetailScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _deletePost(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Post'),
+          content: const Text('Are you sure you want to delete this post?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      await Supabase.instance.client
+          .from('post')
+          .delete()
+          .eq('id', post['id']);
+      if (context.mounted) {
+        Navigator.pop(context, true); // Pop back to previous screen with refresh flag
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = Supabase.instance.client.auth.currentUser;
+    final isOwner = currentUser != null && post['user_id'] == currentUser.id;
+
     return Scaffold(
       backgroundColor: AppColors.lightGray,
       appBar: AppBar(
@@ -865,6 +902,31 @@ class PostDetailScreen extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: isOwner ? [
+          IconButton(
+            icon: const Icon(Icons.edit, color: AppColors.maroon),
+            tooltip: 'Edit',
+            onPressed: () async {
+              final updated = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CreateAdScreen(
+                    post: post,
+                    isEdit: true,
+                  ),
+                ),
+              );
+              if (updated == true && context.mounted) {
+                Navigator.pop(context, true); // Pop back to previous screen with refresh flag
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete, color: AppColors.maroon),
+            tooltip: 'Delete',
+            onPressed: () => _deletePost(context),
+          ),
+        ] : null,
       ),
       body: SingleChildScrollView(
         child: Column(
