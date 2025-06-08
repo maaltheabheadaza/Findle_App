@@ -223,25 +223,6 @@ Widget build(BuildContext context) {
             onPressed: markAllAsRead,
           ),
         ),
-        Container(
-          margin: const EdgeInsets.only(right: 12),
-          child: IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF8DC), // Light yellow
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.refresh_rounded,
-                size: 18,
-                color: Color.fromARGB(255, 1112, 1, 0), // Maroon
-              ),
-            ),
-            tooltip: 'Refresh',
-            onPressed: _fetchNotifications,
-          ),
-        ),
       ],
     ),
     body: _isLoading
@@ -294,286 +275,295 @@ Widget build(BuildContext context) {
                   ],
                 ),
               )
-            : CustomScrollView(
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final notification = _notifications[index];
-                          final post = notification['post'] as Map<String, dynamic>?;
-                          final isUnread = notification['is_read'] != true;
+            : RefreshIndicator(
+                color: const Color.fromARGB(255, 112, 1, 0),
+                backgroundColor: Colors.white,
+                onRefresh: _fetchNotifications,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final notification = _notifications[index];
+                            return _buildNotificationCard(notification);
+                          },
+                          childCount: _notifications.length,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+  );
+}
 
+Widget _buildNotificationCard(Map<String, dynamic> notification) {
+  final post = notification['post'] as Map<String, dynamic>?;
+  final isUnread = notification['is_read'] != true;
 
-                           return Dismissible(
-                                  key: Key(notification['id'].toString()),
-                                  direction: DismissDirection.endToStart, // swipe left only
-                                  background: Container(
-                                    alignment: Alignment.centerRight,
-                                    padding: const EdgeInsets.only(left: 20),
-                                    color: Colors.red,
-                                    child: const Icon(Icons.delete, color: Colors.white),
-                                  ),
-                                 onDismissed: (direction) async {
-                                    final notificationId = notification['id'];
+  return Dismissible(
+    key: Key(notification['id'].toString()),
+    direction: DismissDirection.endToStart, // swipe left only
+    background: Container(
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.only(left: 20),
+      color: Colors.red,
+      child: const Icon(Icons.delete, color: Colors.white),
+    ),
+    onDismissed: (direction) async {
+      final notificationId = notification['id'];
 
-                                    await _deleteNotification(notificationId.toString());
+      await _deleteNotification(notificationId.toString());
 
-                                    // Re-fetch notifications to confirm
-                                    await _fetchNotifications();
+      // Re-fetch notifications to confirm
+      await _fetchNotifications();
 
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Notification deleted')),
-                                    );
-                                  },
-                          child : Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: isUnread
-                                  ? Border.all(
-                                      color: const Color(0xFFFFD700).withOpacity(0.6), // Golden yellow
-                                      width: 2,
-                                    )
-                                  : Border.all(
-                                      color: const Color(0xFFF5F5F5),
-                                      width: 1,
-                                    ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                                if (isUnread)
-                                  BoxShadow(
-                                    color: const Color(0xFFFFD700).withOpacity(0.15), // Golden yellow shadow
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 4),
-                                  ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Notification deleted')),
+      );
+    },
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: isUnread
+            ? Border.all(
+                color: const Color(0xFFFFD700).withOpacity(0.6), // Golden yellow
+                width: 2,
+              )
+            : Border.all(
+                color: const Color(0xFFF5F5F5),
+                width: 1,
+              ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+          if (isUnread)
+            BoxShadow(
+              color: const Color(0xFFFFD700).withOpacity(0.15), // Golden yellow shadow
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            if (post != null) {
+              _markAsRead(notification['id']);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PostDetailScreen(
+                    post: post,
+                    usernames: _usernames,
+                    profileImages: _profileImages,
+                  ),
+                ),
+              );
+            }
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: isUnread
+                  ? LinearGradient(
+                      colors: [
+                        const Color(0xFFFFFDF7), // Very light yellow
+                        Colors.white,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Modern notification icon
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isUnread
+                            ? [
+                                const Color.fromARGB(255, 1112, 1, 0), // Maroon
+                                const Color.fromARGB(255, 1112, 1, 0), // Lighter maroon
+                              ]
+                            : [
+                                const Color(0xFFFFF8DC), // Light yellow
+                                const Color(0xFFFFF0CD), // Slightly darker yellow
                               ],
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  if (post != null) {
-                                    _markAsRead(notification['id']);
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => PostDetailScreen(
-                                          post: post,
-                                          usernames: _usernames,
-                                          profileImages: _profileImages,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                                borderRadius: BorderRadius.circular(16),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
-                                    gradient: isUnread
-                                        ? LinearGradient(
-                                            colors: [
-                                              const Color(0xFFFFFDF7), // Very light yellow
-                                              Colors.white,
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          )
-                                        : null,
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(20),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        // Modern notification icon
-                                        Container(
-                                          width: 48,
-                                          height: 48,
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: isUnread
-                                                  ? [
-                                                      const Color.fromARGB(255, 1112, 1, 0), // Maroon
-                                                      const Color.fromARGB(255, 1112, 1, 0), // Lighter maroon
-                                                    ]
-                                                  : [
-                                                      const Color(0xFFFFF8DC), // Light yellow
-                                                      const Color(0xFFFFF0CD), // Slightly darker yellow
-                                                    ],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            ),
-                                            borderRadius: BorderRadius.circular(14),
-                                            border: Border.all(
-                                              color: isUnread 
-                                                  ? const Color(0xFFFFD700).withOpacity(0.3)
-                                                  : const Color.fromARGB(255, 1112, 1, 0).withOpacity(0.2),
-                                              width: 1.5,
-                                            ),
-                                            boxShadow: isUnread
-                                                ? [
-                                                    BoxShadow(
-                                                      color: const Color.fromARGB(255, 1112, 1, 0).withOpacity(0.2),
-                                                      blurRadius: 8,
-                                                      offset: const Offset(0, 2),
-                                                    ),
-                                                  ]
-                                                : null,
-                                          ),
-                                          child: Icon(
-                                            Icons.notifications_rounded,
-                                            color: isUnread ? Colors.white : const Color.fromARGB(255, 1112, 1, 0),
-                                            size: 24,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        // Content section
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              // Main notification message
-                                              Text(
-                                                notification['message'] ?? 'New notification',
-                                                style: TextStyle(
-                                                  color: const Color.fromARGB(255, 1112, 1, 0), // Maroon
-                                                  fontWeight: isUnread ? FontWeight.w600 : FontWeight.w500,
-                                                  fontSize: 16,
-                                                  height: 1.4,
-                                                  letterSpacing: -0.2,
-                                                ),
-                                              ),
-                                              if (post != null) ...[
-                                                const SizedBox(height: 8),
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(0xFFFFFDF7), // Very light yellow
-                                                    borderRadius: BorderRadius.circular(10),
-                                                    border: Border.all(
-                                                      color: const Color(0xFFFFD700).withOpacity(0.3), // Golden yellow border
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    children: [
-                                                      Container(
-                                                        padding: const EdgeInsets.all(4),
-                                                        decoration: BoxDecoration(
-                                                          color: const Color.fromARGB(255, 1112, 1, 0).withOpacity(0.1), // Light maroon
-                                                          borderRadius: BorderRadius.circular(6),
-                                                        ),
-                                                        child: const Icon(
-                                                          Icons.article_rounded,
-                                                          size: 14,
-                                                          color: Color.fromARGB(255, 1112, 1, 0), // Maroon
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 10),
-                                                      Expanded(
-                                                        child: Text(
-                                                          post['title'] ?? 'Untitled Post',
-                                                          style: const TextStyle(
-                                                            color: Color(0xFF6B4E71), // Muted maroon
-                                                            fontWeight: FontWeight.w500,
-                                                            fontSize: 14,
-                                                            height: 1.3,
-                                                          ),
-                                                          maxLines: 2,
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                              const SizedBox(height: 12),
-                                              // Timestamp and status
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.schedule_rounded,
-                                                    size: 14,
-                                                    color: const Color(0xFF6B4E71), // Muted maroon
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  Text(
-                                                    notification['created_at'] != null
-                                                        ? DateFormat('MMM dd, yyyy').format(
-                                                            DateTime.parse(
-                                                              notification['created_at'],
-                                                            ),
-                                                          )
-                                                        : '',
-                                                    style: const TextStyle(
-                                                      color: Color(0xFF6B4E71), // Muted maroon
-                                                      fontSize: 13,
-                                                      fontWeight: FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                  const Spacer(),
-                                                  if (isUnread)
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 3,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        gradient: const LinearGradient(
-                                                          colors: [
-                                                            Color(0xFFFFD700), // Golden yellow
-                                                            Color(0xFFFFA500), // Orange yellow
-                                                          ],
-                                                        ),
-                                                        borderRadius: BorderRadius.circular(12),
-                                                        boxShadow: [
-                                                          BoxShadow(
-                                                            color: const Color(0xFFFFD700).withOpacity(0.3),
-                                                            blurRadius: 4,
-                                                            offset: const Offset(0, 1),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      child: const Text(
-                                                        'NEW',
-                                                        style: TextStyle(
-                                                          color: Color.fromARGB(255, 112, 1, 0), // Maroon text
-                                                          fontSize: 10,
-                                                          fontWeight: FontWeight.w700,
-                                                          letterSpacing: 0.5,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                ),
-                                ),
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isUnread 
+                            ? const Color(0xFFFFD700).withOpacity(0.3)
+                            : const Color.fromARGB(255, 1112, 1, 0).withOpacity(0.2),
+                        width: 1.5,
+                      ),
+                      boxShadow: isUnread
+                          ? [
+                              BoxShadow(
+                                color: const Color.fromARGB(255, 1112, 1, 0).withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
                               ),
-                            ),
+                            ]
+                          : null,
+                    ),
+                    child: Icon(
+                      Icons.notifications_rounded,
+                      color: isUnread ? Colors.white : const Color.fromARGB(255, 1112, 1, 0),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Content section
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Main notification message
+                        Text(
+                          notification['message'] ?? 'New notification',
+                          style: TextStyle(
+                            color: const Color.fromARGB(255, 1112, 1, 0), // Maroon
+                            fontWeight: isUnread ? FontWeight.w600 : FontWeight.w500,
+                            fontSize: 16,
+                            height: 1.4,
+                            letterSpacing: -0.2,
                           ),
                         ),
-                          );  
-                        },
-                        childCount: _notifications.length,
-                      ),
+                        if (post != null) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFDF7), // Very light yellow
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFFFFD700).withOpacity(0.3), // Golden yellow border
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: const Color.fromARGB(255, 1112, 1, 0).withOpacity(0.1), // Light maroon
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Icon(
+                                    Icons.article_rounded,
+                                    size: 14,
+                                    color: Color.fromARGB(255, 1112, 1, 0), // Maroon
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    post['title'] ?? 'Untitled Post',
+                                    style: const TextStyle(
+                                      color: Color(0xFF6B4E71), // Muted maroon
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                      height: 1.3,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        // Timestamp and status
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.schedule_rounded,
+                              size: 14,
+                              color: const Color(0xFF6B4E71), // Muted maroon
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              notification['created_at'] != null
+                                  ? DateFormat('MMM dd, yyyy').format(
+                                      DateTime.parse(
+                                        notification['created_at'],
+                                      ),
+                                    )
+                                  : '',
+                              style: const TextStyle(
+                                color: Color(0xFF6B4E71), // Muted maroon
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const Spacer(),
+                            if (isUnread)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFFFD700), // Golden yellow
+                                      Color(0xFFFFA500), // Orange yellow
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFFFD700).withOpacity(0.3),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: const Text(
+                                  'NEW',
+                                  style: TextStyle(
+                                    color: Color.fromARGB(255, 112, 1, 0), // Maroon text
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }
 }

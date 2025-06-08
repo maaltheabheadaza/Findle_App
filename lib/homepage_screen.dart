@@ -389,10 +389,10 @@ class _HomePageScreenState extends State<HomePageScreen> {
                  icon: Icons.post_add,
                   title: 'My Posts',
                   index: 0,
-                  onTap: () {
+                  onTap: () async {
                     final user = Supabase.instance.client.auth.currentUser;
                     if (user != null) {
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => LostAndFoundPage(
@@ -401,6 +401,10 @@ class _HomePageScreenState extends State<HomePageScreen> {
                           ),
                         ),
                       );
+                      // Refresh homepage data after returning
+                      fetchUserData();
+                      _fetchUnreadMessageCount();
+                      _fetchUnreadNotificationCount();
                     }
                   },
                 ),
@@ -585,265 +589,284 @@ class _HomePageScreenState extends State<HomePageScreen> {
             
             // Main content with premium design
             Center(
-              child: SingleChildScrollView(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  padding: const EdgeInsets.all(40),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Premium brand header
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 50),
-                        child: Column(
+              child: RefreshIndicator(
+                color: primaryRed,
+                backgroundColor: Colors.white,
+                onRefresh: () async {
+                  // Refresh all data
+                  await fetchUserData();
+                  await _fetchUnreadMessageCount();
+                  await _fetchUnreadNotificationCount();
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    padding: const EdgeInsets.all(40),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Premium brand header
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 50),
+                          child: Column(
+                            children: [
+                              // Brand logo placeholder (you can replace with actual logo)
+                              Container(
+                                width: 80,
+                                height: 80,
+                                margin: const EdgeInsets.only(bottom: 20),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.maroon.withOpacity(0.8),
+                                      AppColors.yellow.withOpacity(0.8),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.maroon.withOpacity(0.3),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.search_rounded,
+                                  color: Colors.white,
+                                  size: 40,
+                                ),
+                              ),
+                              
+                              // Premium title section
+                              Text(
+                                'FINDLE',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.w800,
+                                  color: textColor,
+                                  letterSpacing: 3.0,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Where Lost Things Live',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: textColor.withOpacity(0.7),
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              // Elegant divider
+                              Container(
+                                height: 2,
+                                width: 120,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.transparent,
+                                      AppColors.maroon.withOpacity(0.5),
+                                      AppColors.yellow.withOpacity(0.5),
+                                      Colors.transparent,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(1),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Premium action buttons
+                        Column(
                           children: [
-                            // Brand logo placeholder (you can replace with actual logo)
+                            // Create Post Button - Premium Design
                             Container(
-                              width: 80,
-                              height: 80,
+                              width: double.infinity,
                               margin: const EdgeInsets.only(bottom: 20),
                               decoration: BoxDecoration(
-                                shape: BoxShape.circle,
+                                borderRadius: BorderRadius.circular(30),
                                 gradient: LinearGradient(
                                   colors: [
-                                    AppColors.maroon.withOpacity(0.8),
-                                    AppColors.yellow.withOpacity(0.8),
+                                    Colors.white.withOpacity(0.95),
+                                    Colors.white.withOpacity(0.85),
                                   ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.maroon.withOpacity(0.3),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 10),
+                                    color: AppColors.maroon.withOpacity(0.08),
+                                    blurRadius: 25,
+                                    offset: const Offset(0, 12),
+                                    spreadRadius: 0,
+                                  ),
+                                  BoxShadow(
+                                    color: Colors.white.withOpacity(0.8),
+                                    blurRadius: 1,
+                                    offset: const Offset(0, 1),
+                                    spreadRadius: 0,
                                   ),
                                 ],
+                                border: Border.all(
+                                  color: AppColors.maroon.withOpacity(0.15),
+                                  width: 1.5,
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.search_rounded,
-                                color: Colors.white,
-                                size: 40,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(30),
+                                  onTap: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const CreateAdScreen()),
+                                    );
+                                    // Refresh homepage data after returning
+                                    fetchUserData();
+                                    _fetchUnreadMessageCount();
+                                    _fetchUnreadNotificationCount();
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 32),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.maroon.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(15),
+                                          ),
+                                          child: Icon(
+                                            Icons.campaign_rounded,
+                                            color: AppColors.maroon,
+                                            size: 22,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Text(
+                                          'Create New Post',
+                                          style: GoogleFonts.poppins(
+                                            color: AppColors.maroon,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 16,
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                             
-                            // Premium title section
-                            Text(
-                              'FINDLE',
-                              style: GoogleFonts.poppins(
-                                fontSize: 36,
-                                fontWeight: FontWeight.w800,
-                                color: textColor,
-                                letterSpacing: 3.0,
-                                height: 1.1,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Where Lost Things Live',
-                              style: GoogleFonts.poppins(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: textColor.withOpacity(0.7),
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // Elegant divider
+                            // Lost and Found Button - Premium Design
                             Container(
-                              height: 2,
-                              width: 120,
+                              width: double.infinity,
                               decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(30),
                                 gradient: LinearGradient(
                                   colors: [
-                                    Colors.transparent,
-                                    AppColors.maroon.withOpacity(0.5),
-                                    AppColors.yellow.withOpacity(0.5),
-                                    Colors.transparent,
+                                    Colors.white.withOpacity(0.95),
+                                    Colors.white.withOpacity(0.85),
                                   ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
                                 ),
-                                borderRadius: BorderRadius.circular(1),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.yellow.withOpacity(0.08),
+                                    blurRadius: 25,
+                                    offset: const Offset(0, 12),
+                                    spreadRadius: 0,
+                                  ),
+                                  BoxShadow(
+                                    color: Colors.white.withOpacity(0.8),
+                                    blurRadius: 1,
+                                    offset: const Offset(0, 1),
+                                    spreadRadius: 0,
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: AppColors.yellow.withOpacity(0.15),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(30),
+                                  onTap: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const LostAndFoundPage()),
+                                    );
+                                    // Refresh homepage data after returning
+                                    fetchUserData();
+                                    _fetchUnreadMessageCount();
+                                    _fetchUnreadNotificationCount();
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 32),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.yellow.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(15),
+                                          ),
+                                          child: Icon(
+                                            Icons.search_rounded,
+                                            color: AppColors.yellow,
+                                            size: 22,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Text(
+                                          'Lost and Found',
+                                          style: GoogleFonts.poppins(
+                                            color: AppColors.yellow,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 16,
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      
-                      // Premium action buttons
-                      Column(
-                        children: [
-                          // Create Post Button - Premium Design
-                          Container(
-                            width: double.infinity,
-                            margin: const EdgeInsets.only(bottom: 20),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.white.withOpacity(0.95),
-                                  Colors.white.withOpacity(0.85),
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.maroon.withOpacity(0.08),
-                                  blurRadius: 25,
-                                  offset: const Offset(0, 12),
-                                  spreadRadius: 0,
-                                ),
-                                BoxShadow(
-                                  color: Colors.white.withOpacity(0.8),
-                                  blurRadius: 1,
-                                  offset: const Offset(0, 1),
-                                  spreadRadius: 0,
-                                ),
-                              ],
-                              border: Border.all(
-                                color: AppColors.maroon.withOpacity(0.15),
-                                width: 1.5,
-                              ),
+                        
+                        const SizedBox(height: 40),
+                        
+                        // Premium footer text
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Text(
+                            'Find • Return • Repeat',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              color: textColor.withOpacity(0.5),
+                              letterSpacing: 2.0,
                             ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(30),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const CreateAdScreen()),
-                                  );
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 32),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.maroon.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(15),
-                                        ),
-                                        child: Icon(
-                                          Icons.campaign_rounded,
-                                          color: AppColors.maroon,
-                                          size: 22,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Text(
-                                        'Create New Post',
-                                        style: GoogleFonts.poppins(
-                                          color: AppColors.maroon,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 16,
-                                          letterSpacing: 0.3,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          
-                          // Lost and Found Button - Premium Design
-                          Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.white.withOpacity(0.95),
-                                  Colors.white.withOpacity(0.85),
-                                ],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.yellow.withOpacity(0.08),
-                                  blurRadius: 25,
-                                  offset: const Offset(0, 12),
-                                  spreadRadius: 0,
-                                ),
-                                BoxShadow(
-                                  color: Colors.white.withOpacity(0.8),
-                                  blurRadius: 1,
-                                  offset: const Offset(0, 1),
-                                  spreadRadius: 0,
-                                ),
-                              ],
-                              border: Border.all(
-                                color: AppColors.yellow.withOpacity(0.15),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(30),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const LostAndFoundPage()),
-                                  );
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 32),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.yellow.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(15),
-                                        ),
-                                        child: Icon(
-                                          Icons.search_rounded,
-                                          color: AppColors.yellow,
-                                          size: 22,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Text(
-                                        'Lost and Found',
-                                        style: GoogleFonts.poppins(
-                                          color: AppColors.yellow,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 16,
-                                          letterSpacing: 0.3,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 40),
-                      
-                      // Premium footer text
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          'Find • Return • Repeat',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: textColor.withOpacity(0.5),
-                            letterSpacing: 2.0,
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
