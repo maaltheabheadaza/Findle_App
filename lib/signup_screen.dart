@@ -94,84 +94,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Future<void> _validateAndSubmit() async {
     setState(() {
-      _emailError = null;
-      _usernameError = null;
-      _passwordError = null;
-      _confirmPasswordError = null;
-      _formErrorMessage = null;
-    });
-
-    bool allEmpty = _emailController.text.isEmpty &&
-        _usernameController.text.isEmpty &&
-        _passwordController.text.isEmpty &&
-        _confirmPasswordController.text.isEmpty;
-
-    if (allEmpty) {
-      setState(() {
-        _formErrorMessage = 'All of the fields are required to fill in.';
-      });
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted && _formErrorMessage != null) {
-          setState(() {
-            _formErrorMessage = null;
-          });
-        }
-      });
-      return;
-    }
-
-    bool hasError = false;
-
-    // Email validation
-    final email = _emailController.text.trim();
-    if (email.isEmpty) {
-      _emailError = 'This field is required';
-      hasError = true;
-    } else if (!email.contains('@')) {
-      _emailError = "Email must contain '@'";
-      _emailController.clear();
-      hasError = true;
-    } else if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-      _emailError = 'Please enter a valid email address';
-      _emailController.clear();
-      hasError = true;
-    }
-
-    // Username validation
-    if (_usernameController.text.trim().isEmpty) {
-      _usernameError = 'This field is required';
-      hasError = true;
-    }
-
-    // Password validation
-    final password = _passwordController.text.trim();
-    if (password.isEmpty) {
-      _passwordError = 'This field is required';
-      hasError = true;
-    } else {
-      final hasUppercase = password.contains(RegExp(r'[A-Z]'));
-      final hasNumber = password.contains(RegExp(r'[0-9]'));
-      final hasSymbol = password.contains(RegExp(r'[!@#\$%^&*(),_.?":{}|<>]'));
-
-      if (!hasUppercase || !hasNumber || !hasSymbol) {
-        _passwordError = 'Password must include an uppercase letter, a number, and a symbol';
-        hasError = true;
-      }
-    }
-
-    // Confirm password validation
-    final confirmPassword = _confirmPasswordController.text;
-    if (confirmPassword.isEmpty) {
-      _confirmPasswordError = 'This field is required';
-      hasError = true;
-    } else if (confirmPassword != password) {
-      _confirmPasswordError = "Passwords don't match";
-      hasError = true;
-    }
-
-    if (hasError) return;
-
-    setState(() {
       _isLoading = true;
     });
 
@@ -191,23 +113,73 @@ class _SignUpScreenState extends State<SignUpScreen> {
         final insertResponse = await _supabase
           .from('users')
           .insert({
-            'id': authResponse.user!.id, // This should match auth.users.id
-            'username': _usernameController.text.trim(), // User's input
+            'id': authResponse.user!.id,
+            'username': _usernameController.text.trim(),
             'email': _emailController.text.trim(),
           })
-          .select()
-          .single();
+          .select();
 
-      if (insertResponse == null) {
-        print('❌ Error inserting into users table: Insert returned null');
-        setState(() {
-          _formErrorMessage = 'Failed to save user profile. Please try again.';
-        });
-        return;
-      }
+        if (insertResponse.isEmpty) {
+          if (mounted) {
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext dialogContext) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                backgroundColor: white,
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 16),
+                    Text(
+                      'Registration Failed',
+                      style: GoogleFonts.poppins(
+                        color: primaryRed,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Failed to save user profile. Please try again.',
+                      style: GoogleFonts.poppins(
+                        color: textColor,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryRed,
+                          foregroundColor: white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        },
+                        child: Text(
+                          'OK',
+                          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          return;
+        }
 
-        
-        
         // Show success dialog
         if (mounted) {
           await showDialog(
@@ -259,35 +231,186 @@ class _SignUpScreenState extends State<SignUpScreen> {
           );
         }
       } else {
-         // Handle cases where user is null but no exception was thrown (shouldn't happen with signUp usually)
-         print('⚠️ Signup returned null user.');
-         setState(() {
-           _formErrorMessage = 'Registration failed unexpectedly.';
-         });
+        if (mounted) {
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext dialogContext) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              backgroundColor: white,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 16),
+                  Text(
+                    'Registration Failed',
+                    style: GoogleFonts.poppins(
+                      color: primaryRed,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Registration failed unexpectedly. Please try again.',
+                    style: GoogleFonts.poppins(
+                      color: textColor,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryRed,
+                        foregroundColor: white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                          (route) => false,
+                        );
+                      },
+                      child: Text(
+                        'OK',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
       }
 
     } on AuthException catch (error) {
       print('❌ Supabase Auth error: ${error.message}');
       if (mounted) {
-        if (error.message.contains('already registered') || error.message.contains('exists')) {
-          setState(() {
-            _emailError = 'Email is already in use.';
-            _formErrorMessage = null; // Clear form error if email error is shown
-          });
-        } else {
-          setState(() {
-            _formErrorMessage = 'Registration failed: ${error.message}';
-             _emailError = null; // Clear email error if form error is shown
-          });
-        }
+        String errorMessage = error.message.contains('already registered') || error.message.contains('exists')
+            ? 'Email is already in use. Please use a different email address.'
+            : 'Registration failed: ${error.message}';
+
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: white,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 16),
+                Text(
+                  'Registration Failed',
+                  style: GoogleFonts.poppins(
+                    color: primaryRed,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  errorMessage,
+                  style: GoogleFonts.poppins(
+                    color: textColor,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryRed,
+                      foregroundColor: white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        (route) => false,
+                      );
+                    },
+                    child: Text(
+                      'OK',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       }
     } catch (error) {
-      print('❌ Generic registration error: $error');
+      print('❌ Generic registration error type: ${error.runtimeType}, message: $error');
       if (mounted) {
-        setState(() {
-          _formErrorMessage = 'An unexpected error occurred. Please try again.';
-           _emailError = null; // Clear email error if form error is shown
-        });
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: white,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 16),
+                Text(
+                  'Registration Successful!',
+                  style: GoogleFonts.poppins(
+                    color: primaryRed,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Please check your email for a confirmation link.',
+                  style: GoogleFonts.poppins(
+                    color: textColor,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryRed,
+                      foregroundColor: white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    onPressed: () {
+                      Navigator.of(dialogContext).pop();
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        (route) => false,
+                      );
+                    },
+                    child: Text(
+                      'OK',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -452,18 +575,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   ),
                                   child: Row(
                                     children: [
-                                      Icon(Icons.error_outline, color: primaryRed),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          _formErrorMessage!,
-                                          style: GoogleFonts.poppins(
-                                            color: primaryRed,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ),
+                                      const SizedBox(height: 16),
                                     ],
                                   ),
                                 ),
