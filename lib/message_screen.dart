@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'chat_list_screen.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/gestures.dart';
 
 
 class MessageScreen extends StatefulWidget {
@@ -24,7 +25,8 @@ class MessageScreen extends StatefulWidget {
 class _MessageScreenState extends State<MessageScreen> {
   final _messageController = TextEditingController();
   final _searchController = TextEditingController();
-  final _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
+  bool _userScrolled = false;
   final supabase = Supabase.instance.client;
 
   late final String senderId;
@@ -41,10 +43,33 @@ class _MessageScreenState extends State<MessageScreen> {
     senderId = supabase.auth.currentUser!.id;
     _loadReceiverAvatar();
     _startUpdateTimer();
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
+
+      _scrollController.addListener(() {
+  // Check if user is not at the bottom anymore (user scrolled up)
+        if (_scrollController.position.pixels <
+            _scrollController.position.maxScrollExtent - 50) {
+          _userScrolled = true;
+        } else {
+          _userScrolled = false;
+        }
+      });
   }
+
+
+   void _scrollToBottom() {
+    if (!_userScrolled) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    }
+  }
+
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _timer?.cancel();
     super.dispose();
   }
@@ -54,6 +79,7 @@ class _MessageScreenState extends State<MessageScreen> {
       if (mounted) setState(() {});
     });
   }
+
 
   Future<void> _loadReceiverAvatar() async {
     final data = await supabase
@@ -82,6 +108,7 @@ class _MessageScreenState extends State<MessageScreen> {
 
     _messageController.clear();
     setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
     Future<void> _markMessagesAsSeen(List<Map<String, dynamic>> messages) async {
@@ -156,6 +183,7 @@ class _MessageScreenState extends State<MessageScreen> {
       });
 
       setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to send image: $e')),
@@ -331,9 +359,11 @@ class _MessageScreenState extends State<MessageScreen> {
                           (m['sender_id'] == senderId && m['receiver_id'] == widget.receiverId) ||
                           (m['receiver_id'] == senderId && m['sender_id'] == widget.receiverId))
                       .toList();
-                  WidgetsBinding.instance.addPostFrameCallback((_) async {
+                   WidgetsBinding.instance.addPostFrameCallback((_) async {
                     await _markMessagesAsSeen(messages);
-                    setState(() {}); // Force UI to rebuild with new seen data
+                    if (_scrollController.hasClients) {
+                      _scrollToBottom();
+                    }
                   });
 
                   _searchMatchIndexes.clear();
