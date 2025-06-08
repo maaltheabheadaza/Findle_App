@@ -13,8 +13,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
   final supabase = Supabase.instance.client;
   late final String currentUserId;
   final TextEditingController _searchController = TextEditingController();
+
   List<Map<String, dynamic>> _allChats = [];
   List<Map<String, dynamic>> _filteredChats = [];
+  List<Map<String, dynamic>> _searchResults = [];
+
   bool _isLoading = true;
 
   @override
@@ -22,6 +25,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
     super.initState();
     currentUserId = supabase.auth.currentUser!.id;
     _loadConversations();
+
+    _searchController.addListener(() {
+      _filterChats(_searchController.text.trim());
+    });
   }
 
   Future<void> _loadConversations() async {
@@ -46,6 +53,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
     final chatList = uniqueConversations.entries.map((entry) => entry.value).toList();
 
+    // Fetch user info for each conversation
     for (var convo in chatList) {
       final otherUserId = convo['sender_id'] == currentUserId
           ? convo['receiver_id']
@@ -65,19 +73,35 @@ class _ChatListScreenState extends State<ChatListScreen> {
     setState(() {
       _allChats = chatList;
       _filteredChats = chatList;
+      _searchResults = [];
       _isLoading = false;
     });
   }
 
-  void _filterChats(String query) {
-    final filtered = _allChats.where((chat) {
-      final username = chat['username']?.toLowerCase() ?? '';
-      return username.contains(query.toLowerCase());
-    }).toList();
+  Future<void> _filterChats(String query) async {
+    if (query.isEmpty) {
+      // Show chat list when search is cleared
+      setState(() {
+        _filteredChats = _allChats;
+        _searchResults = [];
+      });
+    } else {
+      // Search all users by username in supabase excluding current user
+      final response = await supabase
+          .from('users')
+          .select('id, username, profile_image_url')
+          .ilike('username', '%$query%')
+          .neq('id', currentUserId)
+          .limit(20);
 
-    setState(() {
-      _filteredChats = filtered;
-    });
+      final List<Map<String, dynamic>> results =
+          List<Map<String, dynamic>>.from(response);
+
+      setState(() {
+        _searchResults = results;
+        _filteredChats = []; // hide chat list while showing search results
+      });
+    }
   }
 
   String _formatTimestamp(DateTime timestamp) {
@@ -98,7 +122,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
       await supabase
           .from('messages')
           .delete()
-          .or('and(sender_id.eq.$currentUserId,receiver_id.eq.$otherUserId),and(sender_id.eq.$otherUserId,receiver_id.eq.$currentUserId)');
+          .or(
+            'and(sender_id.eq.$currentUserId,receiver_id.eq.$otherUserId),and(sender_id.eq.$otherUserId,receiver_id.eq.$currentUserId)',
+          );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Conversation deleted')),
@@ -114,7 +140,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isSearching = _searchController.text.trim().isNotEmpty;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF700100),
@@ -125,7 +159,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
               controller: _searchController,
-              onChanged: _filterChats,
               decoration: InputDecoration(
                 hintText: 'Search by username...',
                 filled: true,
@@ -136,6 +169,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   borderSide: BorderSide.none,
                 ),
                 prefixIcon: const Icon(Icons.search),
+                suffixIcon: isSearching
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _filterChats('');
+                        },
+                      )
+                    : null,
               ),
             ),
           ),
@@ -143,117 +185,142 @@ class _ChatListScreenState extends State<ChatListScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _allChats.isEmpty
-              ? const Center(child: Text('No chats yet.'))
-              : _filteredChats.isEmpty
+          : isSearching
+              ? (_searchResults.isEmpty
                   ? const Center(child: Text('No results found.'))
                   : ListView.builder(
-                      itemCount: _filteredChats.length,
+                      itemCount: _searchResults.length,
                       itemBuilder: (context, index) {
-                        final chat = _filteredChats[index];
-                        final String lastMessage = chat['message'] ?? '[No message]';
-                        final DateTime timestamp =
-                            DateTime.parse(chat['timestamp']);
-                        final bool isUnread =
-                            chat['sender_id'] != currentUserId &&
-                                (chat['seen'] == false);
-
+                        final user = _searchResults[index];
                         return ListTile(
                           leading: CircleAvatar(
                             backgroundColor: Colors.grey.shade200,
-                            backgroundImage: chat['profile_image_url'] != null
-                                ? NetworkImage(chat['profile_image_url'])
+                            backgroundImage: user['profile_image_url'] != null
+                                ? NetworkImage(user['profile_image_url'])
                                 : null,
-                            child: chat['profile_image_url'] == null
+                            child: user['profile_image_url'] == null
                                 ? const Icon(Icons.person, color: Colors.grey)
                                 : null,
                           ),
-                          title: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '@${chat['username']}',
-                                  style: TextStyle(
-                                    fontWeight: isUnread
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                _formatTimestamp(timestamp),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          subtitle: Text(
-                            lastMessage,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontWeight: isUnread
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
+                          title: Text('@${user['username']}'),
                           onTap: () async {
-                            await supabase
-                                .from('messages')
-                                .update({'seen': true})
-                                .match({
-                                  'sender_id': chat['other_user_id'],
-                                  'receiver_id': currentUserId,
-                                });
-
+                            // Open chat screen for that user
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => MessageScreen(
-                                  receiverId: chat['other_user_id'],
-                                  receiverUsername: chat['username'],
+                                  receiverId: user['id'],
+                                  receiverUsername: user['username'],
                                 ),
                               ),
                             );
-
+                            // Reload conversations after return
                             _loadConversations();
-                          },
-                          onLongPress: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Delete Conversation?'),
-                                content: Text(
-                                  'This will also delete it for @${chat['username']}',
-                                  style: TextStyle(
-                                      fontSize: 14, color: Colors.grey[700]),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    child: const Text('Delete'),
-                                  ),
-                                ],
-                              ),
-                            );
-
-                            if (confirm == true) {
-                              await _deleteConversation(chat['other_user_id']);
-                              _loadConversations();
-                            }
                           },
                         );
                       },
-                    ),
+                    ))
+              : _allChats.isEmpty
+                  ? const Center(child: Text('No chats yet.'))
+                  : _filteredChats.isEmpty
+                      ? const Center(child: Text('No results found.'))
+                      : ListView.builder(
+                          itemCount: _filteredChats.length,
+                          itemBuilder: (context, index) {
+                            final chat = _filteredChats[index];
+                            final String lastMessage = chat['message'] ?? '[No message]';
+                            final DateTime timestamp = DateTime.parse(chat['timestamp']);
+                            final bool isUnread = chat['sender_id'] != currentUserId && (chat['seen'] == false);
+
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: Colors.grey.shade200,
+                                backgroundImage: chat['profile_image_url'] != null
+                                    ? NetworkImage(chat['profile_image_url'])
+                                    : null,
+                                child: chat['profile_image_url'] == null
+                                    ? const Icon(Icons.person, color: Colors.grey)
+                                    : null,
+                              ),
+                              title: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '@${chat['username']}',
+                                      style: TextStyle(
+                                        fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    _formatTimestamp(timestamp),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              subtitle: Text(
+                                lastMessage,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                              onTap: () async {
+                                await supabase
+                                    .from('messages')
+                                    .update({'seen': true})
+                                    .match({
+                                      'sender_id': chat['other_user_id'],
+                                      'receiver_id': currentUserId,
+                                    });
+
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => MessageScreen(
+                                      receiverId: chat['other_user_id'],
+                                      receiverUsername: chat['username'],
+                                    ),
+                                  ),
+                                );
+
+                                _loadConversations();
+                              },
+                              onLongPress: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Delete Conversation?'),
+                                    content: Text(
+                                      'This will also delete it for @${chat['username']}',
+                                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context, true),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirm == true) {
+                                  await _deleteConversation(chat['other_user_id']);
+                                  _loadConversations();
+                                }
+                              },
+                            );
+                          },
+                        ),
     );
   }
 }
