@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'message_screen.dart';
-import '../utils/encryption_helper.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -16,7 +15,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _allChats = [];
   List<Map<String, dynamic>> _filteredChats = [];
-  bool _isLoading = true; // Added loading flag
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -26,7 +25,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Future<void> _loadConversations() async {
-    setState(() => _isLoading = true); // Start loading
+    setState(() => _isLoading = true);
 
     final messages = await supabase
         .from('messages')
@@ -45,8 +44,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       }
     }
 
-    final chatList =
-        uniqueConversations.entries.map((entry) => entry.value).toList();
+    final chatList = uniqueConversations.entries.map((entry) => entry.value).toList();
 
     for (var convo in chatList) {
       final otherUserId = convo['sender_id'] == currentUserId
@@ -67,7 +65,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     setState(() {
       _allChats = chatList;
       _filteredChats = chatList;
-      _isLoading = false; // Done loading
+      _isLoading = false;
     });
   }
 
@@ -153,14 +151,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       itemCount: _filteredChats.length,
                       itemBuilder: (context, index) {
                         final chat = _filteredChats[index];
-                        String decryptedLastMessage;
-                        try {
-                          decryptedLastMessage =
-                              EncryptionHelper.decryptText(chat['message']);
-                        } catch (_) {
-                          decryptedLastMessage = '[Encrypted message]';
-                        }
-
+                        final String lastMessage = chat['message'] ?? '[No message]';
                         final DateTime timestamp =
                             DateTime.parse(chat['timestamp']);
                         final bool isUnread =
@@ -200,7 +191,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             ],
                           ),
                           subtitle: Text(
-                            decryptedLastMessage,
+                            lastMessage,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
