@@ -60,6 +60,47 @@ class _MessageScreenState extends State<MessageScreen> {
   }
 
 
+  Widget _buildHighlightedText(String text) {
+    String searchTerm = _searchController.text.trim().toLowerCase();
+
+    if (searchTerm.isEmpty || !text.toLowerCase().contains(searchTerm)) {
+      return Text(text);
+    }
+
+    final matches = <TextSpan>[];
+    int start = 0;
+    final lowerText = text.toLowerCase();
+
+    while (true) {
+      final index = lowerText.indexOf(searchTerm, start);
+      if (index == -1) {
+        matches.add(TextSpan(text: text.substring(start)));
+        break;
+      }
+
+      if (index > start) {
+        matches.add(TextSpan(text: text.substring(start, index)));
+      }
+
+      matches.add(TextSpan(
+        text: text.substring(index, index + searchTerm.length),
+        style: const TextStyle(
+          backgroundColor: Colors.yellow,
+          fontWeight: FontWeight.bold,
+        ),
+      ));
+
+      start = index + searchTerm.length;
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(color: Colors.black), // Adjust kung dark mode
+        children: matches,
+      ),
+    );
+  }
+
    void _scrollToBottom() {
     if (!_userScrolled) {
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
@@ -487,7 +528,7 @@ class _MessageScreenState extends State<MessageScreen> {
                                 color: isMe ? const Color(0xFFF6C401) : Colors.grey[300],
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Text(decryptedText),
+                              child: _buildHighlightedText(decryptedText),
                             ),
                             Row(
                               mainAxisSize: MainAxisSize.min,
