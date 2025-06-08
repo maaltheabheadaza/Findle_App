@@ -104,6 +104,8 @@ class _HomePageScreenState extends State<HomePageScreen> {
   String? username;
   String? profileImageUrl;
   bool isLoading = true;
+  int unreadMessageCount = 0;
+  int unreadNotificationCount = 0;
   
   // Track selected menu item
   int _selectedIndex = -1;
@@ -112,6 +114,90 @@ class _HomePageScreenState extends State<HomePageScreen> {
   void initState() {
     super.initState();
     fetchUserData();
+    _fetchUnreadMessageCount();
+    _fetchUnreadNotificationCount();
+    _setupMessageSubscription();
+    _setupNotificationSubscription();
+  }
+
+  void _setupMessageSubscription() {
+    final supabase = Supabase.instance.client;
+    final currentUserId = supabase.auth.currentUser?.id;
+    
+    if (currentUserId != null) {
+      print('Setting up message subscription for user: $currentUserId');
+      supabase
+          .from('messages')
+          .stream(primaryKey: ['id'])
+          .eq('receiver_id', currentUserId)
+          .listen((data) {
+        print('New message received, updating count');
+        _fetchUnreadMessageCount();
+      });
+    } else {
+      print('No current user found for subscription');
+    }
+  }
+
+  void _setupNotificationSubscription() {
+    final supabase = Supabase.instance.client;
+    final currentUserId = supabase.auth.currentUser?.id;
+    
+    if (currentUserId != null) {
+      supabase
+          .from('notifications')
+          .stream(primaryKey: ['id'])
+          .eq('user_id', currentUserId)
+          .listen((_) {
+        _fetchUnreadNotificationCount();
+      });
+    }
+  }
+
+  Future<void> _fetchUnreadMessageCount() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final currentUserId = supabase.auth.currentUser?.id;
+      
+      if (currentUserId != null) {
+        print('Fetching unread messages for user: $currentUserId');
+        final response = await supabase
+            .from('messages')
+            .select('id')
+            .eq('receiver_id', currentUserId)
+            .eq('seen', false);
+            
+        print('Unread messages found: ${response.length}');
+        setState(() {
+          unreadMessageCount = response.length;
+        });
+      } else {
+        print('No current user found');
+      }
+    } catch (e) {
+      print('Error fetching unread message count: $e');
+    }
+  }
+
+  Future<void> _fetchUnreadNotificationCount() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final currentUserId = supabase.auth.currentUser?.id;
+      
+      if (currentUserId != null) {
+        final response = await supabase
+            .from('notifications')
+            .select('id')
+            .eq('user_id', currentUserId)
+            .eq('is_read', false);
+            
+        setState(() {
+          unreadNotificationCount = response.length;
+        });
+      }
+    } catch (e) {
+      print('Error fetching unread notification count: $e');
+    }
   }
 
   Future<void> fetchUserData() async {
@@ -322,24 +408,28 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 icon: Icons.message,
                 title: 'Messages',
                 index: 2,
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
-                  Navigator.push(
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const ChatListScreen()),
                   );
+                  // Refresh unread count after returning from chat screen
+                  _fetchUnreadMessageCount();
                 },
               ),
               _buildDrawerItem(
                 icon: Icons.notifications,
                 title: 'Notifications',
                 index: 3,
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
-                  Navigator.push(
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const NotificationsScreen()),
                   );
+                  // Refresh unread count after returning from notifications screen
+                  _fetchUnreadNotificationCount();
                 },
               ),
               _buildDrawerItem(
@@ -772,9 +862,56 @@ class _HomePageScreenState extends State<HomePageScreen> {
     final bool isSelected = _selectedIndex == index;
     
     return ListTile(
-      leading: Icon(
-        icon,
-        color: isSelected ? primaryRed : Colors.grey,
+      leading: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Icon(
+            icon,
+            color: isSelected ? primaryRed : Colors.grey,
+            size: 24,
+          ),
+          if ((title == 'Messages' && unreadMessageCount > 0) ||
+              (title == 'Notifications' && unreadNotificationCount > 0))
+            Positioned(
+              right: -8,
+              top: -8,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: primaryRed,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white,
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 20,
+                  minHeight: 20,
+                ),
+                child: Center(
+                  child: Text(
+                    title == 'Messages' 
+                        ? unreadMessageCount.toString()
+                        : unreadNotificationCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       title: Text(
         title,
@@ -789,6 +926,10 @@ class _HomePageScreenState extends State<HomePageScreen> {
         setState(() {
           _selectedIndex = index;
         });
+        // Refresh user data and counts before executing the onTap action
+        fetchUserData();
+        _fetchUnreadMessageCount();
+        _fetchUnreadNotificationCount();
         onTap();
       },
     );

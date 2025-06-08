@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 import 'message_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   final supabase = Supabase.instance.client;
   late final String currentUserId;
   final TextEditingController _searchController = TextEditingController();
+  StreamSubscription? _subscription;
 
   List<Map<String, dynamic>> _allChats = [];
   List<Map<String, dynamic>> _filteredChats = [];
@@ -25,57 +27,100 @@ class _ChatListScreenState extends State<ChatListScreen> {
     super.initState();
     currentUserId = supabase.auth.currentUser!.id;
     _loadConversations();
+    _setupRealtimeSubscription();
 
     _searchController.addListener(() {
       _filterChats(_searchController.text.trim());
     });
   }
 
+  void _setupRealtimeSubscription() {
+    _subscription = supabase
+        .from('messages')
+        .stream(primaryKey: ['id'])
+        .eq('receiver_id', currentUserId)
+        .listen((List<Map<String, dynamic>> data) {
+      // Immediately reload conversations when any change occurs
+      _loadConversations();
+    });
+
+    // Also listen for messages where current user is the sender
+    _subscription = supabase
+        .from('messages')
+        .stream(primaryKey: ['id'])
+        .eq('sender_id', currentUserId)
+        .listen((List<Map<String, dynamic>> data) {
+      // Immediately reload conversations when any change occurs
+      _loadConversations();
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadConversations() async {
+    if (!mounted) return;
+    
     setState(() => _isLoading = true);
 
-    final messages = await supabase
-        .from('messages')
-        .select('id, sender_id, receiver_id, message, timestamp, seen')
-        .order('timestamp', ascending: false);
+    try {
+      final messages = await supabase
+          .from('messages')
+          .select('id, sender_id, receiver_id, message, timestamp, seen')
+          .or('sender_id.eq.$currentUserId,receiver_id.eq.$currentUserId')
+          .order('timestamp', ascending: false);
 
-    final uniqueConversations = <String, Map<String, dynamic>>{};
+      final uniqueConversations = <String, Map<String, dynamic>>{};
 
-    for (var msg in messages) {
-      final otherUserId = msg['sender_id'] == currentUserId
-          ? msg['receiver_id']
-          : msg['sender_id'];
+      for (var msg in messages) {
+        final otherUserId = msg['sender_id'] == currentUserId
+            ? msg['receiver_id']
+            : msg['sender_id'];
 
-      if (!uniqueConversations.containsKey(otherUserId)) {
-        uniqueConversations[otherUserId] = msg;
+        if (!uniqueConversations.containsKey(otherUserId)) {
+          uniqueConversations[otherUserId] = msg;
+        }
+      }
+
+      final chatList = uniqueConversations.entries.map((entry) => entry.value).toList();
+
+      // Fetch user info for each conversation
+      for (var convo in chatList) {
+        final otherUserId = convo['sender_id'] == currentUserId
+            ? convo['receiver_id']
+            : convo['sender_id'];
+
+        final userInfo = await supabase
+            .from('users')
+            .select('username, profile_image_url')
+            .eq('id', otherUserId)
+            .maybeSingle();
+
+        convo['other_user_id'] = otherUserId;
+        convo['username'] = userInfo?['username'] ?? 'Unknown';
+        convo['profile_image_url'] = userInfo?['profile_image_url'];
+      }
+
+      if (mounted) {
+        setState(() {
+          _allChats = chatList;
+          _filteredChats = chatList;
+          _searchResults = [];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load conversations')),
+        );
       }
     }
-
-    final chatList = uniqueConversations.entries.map((entry) => entry.value).toList();
-
-    // Fetch user info for each conversation
-    for (var convo in chatList) {
-      final otherUserId = convo['sender_id'] == currentUserId
-          ? convo['receiver_id']
-          : convo['sender_id'];
-
-      final userInfo = await supabase
-          .from('users')
-          .select('username, profile_image_url')
-          .eq('id', otherUserId)
-          .maybeSingle();
-
-      convo['other_user_id'] = otherUserId;
-      convo['username'] = userInfo?['username'] ?? 'Unknown';
-      convo['profile_image_url'] = userInfo?['profile_image_url'];
-    }
-
-    setState(() {
-      _allChats = chatList;
-      _filteredChats = chatList;
-      _searchResults = [];
-      _isLoading = false;
-    });
   }
 
   Future<void> _filterChats(String query) async {
@@ -140,12 +185,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final isSearching = _searchController.text.trim().isNotEmpty;
 
@@ -153,6 +192,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF700100),
         title: const Text('Chats', style: TextStyle(color: Colors.white)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _loadConversations,
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),
           child: Padding(
